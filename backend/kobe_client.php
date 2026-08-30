@@ -255,22 +255,24 @@ class KobeLibraryClient {
                         if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $attr, $pm)) {
                             $slotDate = (isset($pm[1]) && $pm[1] !== '') ? $pm[1] : ($pm[3] ?? '');
                             $slotId = (isset($pm[2]) && $pm[2] !== '') ? $pm[2] : ($pm[4] ?? '0');
-
                             $isFull = (strpos($attr, 'full') !== false);
+                            $isLimited = (strpos($attr, 'limited') !== false);
+                            $isReservable = (strpos($attr, 'reservable') !== false);
+                            $isAvailable = (!$isClosed && ($isLimited || $isReservable) && !$isFull);
+
                             $cleanInner = trim(preg_replace('/\s+/', ' ', strip_tags($inner)));
                             $remainCount = null;
                             if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanInner, $rm)) {
                                 $remainCount = (int)$rm[1];
                             } elseif ($isLimited) {
-                                $remainCount = 1; // Limited is at least 1 seat remaining
+                                $remainCount = 1;
                             } elseif ($isReservable) {
-                                $remainCount = ($cornerCode === '61000' ? 8 : 12); // Standard capacity
+                                $remainCount = ($cornerCode === '61000' ? 8 : 12);
                             } elseif ($isFull) {
                                 $remainCount = 0;
                             }
 
                             $seatText = ($remainCount !== null) ? "{$remainCount}席" : ($isAvailable ? "1席" : "0席");
-
                             // Extract time range
                             if (preg_match('/(\d{1,2}:\d{2})\s*.*?(\d{1,2}:\d{2})/s', $inner, $tm)) {
                                 $timeStr = "{$tm[1]} - {$tm[2]}";
