@@ -1,8 +1,14 @@
 <?php
 /**
- * REST API Router
+ * REST API Router with Session Tenant Isolation
  * Libraryes API
  */
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$sessionId = session_id();
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -39,23 +45,29 @@ try {
 
     switch ($action) {
         case 'status':
-            $stmtAccounts = $db->query("SELECT id, usercode, name, is_default, created_at FROM accounts ORDER BY id ASC");
+            // Filter strictly by current session_id
+            $stmtAccounts = $db->prepare("SELECT id, usercode, name, is_default, created_at FROM accounts WHERE session_id = :sid ORDER BY id ASC");
+            $stmtAccounts->execute([':sid' => $sessionId]);
             $accounts = $stmtAccounts->fetchAll();
 
-            $stmtTasks = $db->query("
+            $stmtTasks = $db->prepare("
                 SELECT t.*, a.usercode, a.name as account_name 
                 FROM tasks t 
                 LEFT JOIN accounts a ON t.account_id = a.id 
+                WHERE t.session_id = :sid 
                 ORDER BY t.id DESC 
                 LIMIT 50
             ");
+            $stmtTasks->execute([':sid' => $sessionId]);
             $tasks = $stmtTasks->fetchAll();
 
-            $stmtLogs = $db->query("SELECT * FROM logs ORDER BY id DESC LIMIT 50");
+            $stmtLogs = $db->prepare("SELECT * FROM logs WHERE session_id = :sid ORDER BY id DESC LIMIT 50");
+            $stmtLogs->execute([':sid' => $sessionId]);
             $logs = $stmtLogs->fetchAll();
 
             jsonResponse([
                 'success' => true,
+                'session_id' => substr($sessionId, 0, 8) . '...',
                 'areas' => KobeLibraryClient::AREAS,
                 'corners' => KobeLibraryClient::CORNERS,
                 'accounts' => $accounts,
@@ -82,26 +94,36 @@ try {
                 jsonResponse(['success' => false, 'message' => '神戸市立図書館予約システムへのログインに失敗しました。利用者番号またはパスワードを確認してください。'], 400);
             }
 
-            $stmt = $db->prepare("
-                INSERT INTO accounts (usercode, password, name, is_default, updated_at) 
-                VALUES (:usercode, :password, :name, 1, CURRENT_TIMESTAMP)
-                ON CONFLICT(usercode) DO UPDATE SET password = :password, name = :name, updated_at = CURRENT_TIMESTAMP
-            ");
-            $stmt->execute([
-                ':usercode' => $usercode,
-                ':password' => $password,
-                ':name' => $name ?: "利用者 {$usercode}"
-            ]);
+            // Check if already exists for this session
+            $stmtCheck = $db->prepare("SELECT id FROM accounts WHERE session_id = :sid AND usercode = :usercode");
+            $stmtCheck->execute([':sid' => $sessionId, ':usercode' => $usercode]);
+            $existingId = $stmtCheck->fetchColumn();
 
-            DB::log("Account saved & verified: {$usercode}", 'success');
+            if ($existingId) {
+                $stmt = $db->prepare("UPDATE accounts SET password = :password, name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+                $stmt->execute([':password' => $password, ':name' => $name ?: "利用者 {$usercode}", ':id' => $existingId]);
+            } else {
+                $stmt = $db->prepare("
+                    INSERT INTO accounts (session_id, usercode, password, name, is_default, updated_at) 
+                    VALUES (:sid, :usercode, :password, :name, 1, CURRENT_TIMESTAMP)
+                ");
+                $stmt->execute([
+                    ':sid' => $sessionId,
+                    ':usercode' => $usercode,
+                    ':password' => $password,
+                    ':name' => $name ?: "利用者 {$usercode}"
+                ]);
+            }
+
+            DB::log("Account saved & verified: {$usercode}", 'success', null, [], $sessionId);
             jsonResponse(['success' => true, 'message' => 'アカウントが正常に認証・保存されました。']);
             break;
 
         case 'delete_account':
             $input = getJsonInput();
             $id = (int)($input['id'] ?? 0);
-            $stmt = $db->prepare("DELETE FROM accounts WHERE id = :id");
-            $stmt->execute([':id' => $id]);
+            $stmt = $db->prepare("DELETE FROM accounts WHERE id = :id AND session_id = :sid");
+            $stmt->execute([':id' => $id, ':sid' => $sessionId]);
             jsonResponse(['success' => true, 'message' => 'アカウントを削除しました。']);
             break;
 
@@ -121,22 +143,26 @@ try {
             $corner = $_GET['corner'] ?? '62000';
             $purpose = $_GET['purpose'] ?? 'focus';
             $preferredTime = $_GET['preferred_time'] ?? null;
-            $accountId = (int)($_GET['account_id'] ?? 0);
 
             $client = new KobeLibraryClient();
             $slots = [];
-            if ($accountId > 0) {
-                $stmt = $db->prepare("SELECT * FROM accounts WHERE id = :id");
-                $stmt->execute([':id' => $accountId]);
-                $acc = $stmt->fetch();
-                if ($acc) {
+
+            // Try authenticated matrix if user has an account in this session
+            $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE session_id = :sid ORDER BY is_default DESC LIMIT 1");
+            $stmtAcc->execute([':sid' => $sessionId]);
+            $acc = $stmtAcc->fetch();
+
+            if ($acc) {
+                try {
                     $client->login($acc['usercode'], $acc['password']);
                     $matrix = $client->getReservationMatrix($corner, $date);
                     $slots = $matrix['slots'] ?? [];
+                } catch (Exception $e) {
+                    // fallback to public
                 }
             }
 
-            // Fallback to public vacancies if unauthenticated or matrix empty
+            // Fallback to public vacancies
             if (empty($slots)) {
                 $pub = $client->getPublicVacancies($date, $area, $corner);
                 $slots = $pub['slots'] ?? [];
@@ -147,6 +173,7 @@ try {
             jsonResponse([
                 'success' => true,
                 'date' => $date,
+                'area_code' => $area,
                 'corner_code' => $corner,
                 'purpose' => $purpose,
                 'total_candidates' => count($slots),
@@ -157,7 +184,6 @@ try {
 
         case 'create_task':
             $input = getJsonInput();
-            $accountId = (int)($input['account_id'] ?? 0);
             $type = $input['type'] ?? 'ai_optimal';
             $areaCode = $input['area_code'] ?? '60000';
             $cornerCode = $input['corner_code'] ?? '62000';
@@ -165,22 +191,23 @@ try {
             $targetTimeSlot = $input['target_time_slot'] ?? '';
             $purpose = $input['purpose'] ?? 'focus';
             $executeAt = !empty($input['execute_at']) ? $input['execute_at'] : null;
-            $maxRetries = (int)($input['max_retries'] ?? 50);
+            $maxRetries = (int)($input['max_retries'] ?? 999999);
 
-            if ($accountId <= 0) {
-                $stmtAcc = $db->query("SELECT id FROM accounts LIMIT 1");
-                $firstAcc = $stmtAcc->fetch();
-                if (!$firstAcc) {
-                    jsonResponse(['success' => false, 'message' => 'アカウントが登録されていません。先にアカウントを登録してください。'], 400);
-                }
-                $accountId = (int)$firstAcc['id'];
+            $stmtAcc = $db->prepare("SELECT id FROM accounts WHERE session_id = :sid ORDER BY is_default DESC LIMIT 1");
+            $stmtAcc->execute([':sid' => $sessionId]);
+            $firstAcc = $stmtAcc->fetch();
+
+            if (!$firstAcc) {
+                jsonResponse(['success' => false, 'message' => 'アカウントが登録されていません。先にアカウントを設定してください。'], 400);
             }
+            $accountId = (int)$firstAcc['id'];
 
             $stmt = $db->prepare("
-                INSERT INTO tasks (account_id, type, area_code, corner_code, target_date, target_time_slot, purpose, execute_at, max_retries, status)
-                VALUES (:account_id, :type, :area_code, :corner_code, :target_date, :target_time_slot, :purpose, :execute_at, :max_retries, 'pending')
+                INSERT INTO tasks (session_id, account_id, type, area_code, corner_code, target_date, target_time_slot, purpose, execute_at, max_retries, status)
+                VALUES (:sid, :account_id, :type, :area_code, :corner_code, :target_date, :target_time_slot, :purpose, :execute_at, :max_retries, 'pending')
             ");
             $stmt->execute([
+                ':sid' => $sessionId,
                 ':account_id' => $accountId,
                 ':type' => $type,
                 ':area_code' => $areaCode,
@@ -193,9 +220,8 @@ try {
             ]);
             $taskId = (int)$db->lastInsertId();
 
-            DB::log("Created new task #{$taskId} ({$type})", 'info', $taskId);
+            DB::log("Created new task #{$taskId} ({$type})", 'info', $taskId, [], $sessionId);
 
-            // If requested immediate run
             $immediate = !empty($input['run_now']);
             if ($immediate) {
                 $result = Worker::runTaskById($taskId);
@@ -208,9 +234,6 @@ try {
         case 'run_task':
             $input = getJsonInput();
             $taskId = (int)($input['task_id'] ?? 0);
-            if ($taskId <= 0) {
-                jsonResponse(['success' => false, 'message' => '無効なタスクIDです。'], 400);
-            }
             $result = Worker::runTaskById($taskId);
             jsonResponse(['success' => true, 'result' => $result]);
             break;
@@ -218,33 +241,26 @@ try {
         case 'cancel_task':
             $input = getJsonInput();
             $taskId = (int)($input['task_id'] ?? 0);
-            $stmt = $db->prepare("UPDATE tasks SET status = 'cancelled', result_message = 'ユーザーにより手動キャンセル', updated_at = CURRENT_TIMESTAMP WHERE id = :id");
-            $stmt->execute([':id' => $taskId]);
-            DB::log("Task #{$taskId} cancelled by user", 'warn', $taskId);
+            $stmt = $db->prepare("UPDATE tasks SET status = 'cancelled', result_message = 'ユーザーにより手動キャンセル', updated_at = CURRENT_TIMESTAMP WHERE id = :id AND session_id = :sid");
+            $stmt->execute([':id' => $taskId, ':sid' => $sessionId]);
             jsonResponse(['success' => true, 'message' => 'タスクをキャンセルしました。']);
             break;
 
         case 'delete_task':
             $input = getJsonInput();
             $taskId = (int)($input['task_id'] ?? 0);
-            $stmt = $db->prepare("DELETE FROM tasks WHERE id = :id");
-            $stmt->execute([':id' => $taskId]);
+            $stmt = $db->prepare("DELETE FROM tasks WHERE id = :id AND session_id = :sid");
+            $stmt->execute([':id' => $taskId, ':sid' => $sessionId]);
             jsonResponse(['success' => true, 'message' => 'タスクを削除しました。']);
             break;
 
         case 'my_reservations':
-            $accountId = (int)($_GET['account_id'] ?? 0);
-            if ($accountId <= 0) {
-                $stmtAcc = $db->query("SELECT * FROM accounts LIMIT 1");
-                $acc = $stmtAcc->fetch();
-            } else {
-                $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE id = :id");
-                $stmtAcc->execute([':id' => $accountId]);
-                $acc = $stmtAcc->fetch();
-            }
+            $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE session_id = :sid ORDER BY is_default DESC LIMIT 1");
+            $stmtAcc->execute([':sid' => $sessionId]);
+            $acc = $stmtAcc->fetch();
 
             if (!$acc) {
-                jsonResponse(['success' => false, 'message' => '有効なアカウントがありません。'], 400);
+                jsonResponse(['success' => false, 'message' => 'アカウントが登録されていません。'], 400);
             }
 
             $client = new KobeLibraryClient();
@@ -255,17 +271,11 @@ try {
 
         case 'cancel_reservation':
             $input = getJsonInput();
-            $accountId = (int)($input['account_id'] ?? 0);
             $slotId = (string)($input['slot_id'] ?? '0');
 
-            if ($accountId <= 0) {
-                $stmtAcc = $db->query("SELECT * FROM accounts LIMIT 1");
-                $acc = $stmtAcc->fetch();
-            } else {
-                $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE id = :id");
-                $stmtAcc->execute([':id' => $accountId]);
-                $acc = $stmtAcc->fetch();
-            }
+            $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE session_id = :sid ORDER BY is_default DESC LIMIT 1");
+            $stmtAcc->execute([':sid' => $sessionId]);
+            $acc = $stmtAcc->fetch();
 
             if (!$acc) {
                 jsonResponse(['success' => false, 'message' => 'アカウントが見つかりません。'], 400);
@@ -276,7 +286,7 @@ try {
             $cancelled = $client->cancelReservation($slotId);
 
             if ($cancelled) {
-                DB::log("Reservation cancelled for user {$acc['usercode']} (Slot: {$slotId})", 'success');
+                DB::log("Reservation cancelled for user {$acc['usercode']} (Slot: {$slotId})", 'success', null, [], $sessionId);
                 jsonResponse(['success' => true, 'message' => '予約を正常に取り消しました。']);
             } else {
                 jsonResponse(['success' => false, 'message' => '予約の取り消しに失敗しました。'], 500);
@@ -289,74 +299,34 @@ try {
             $slotId = (string)($input['slot_id'] ?? '0');
             $cornerCode = $input['corner_code'] ?? '62000';
             $areaCode = $input['area_code'] ?? '60000';
-            $seatCount = (int)($input['seat_count'] ?? 2); // Default to 2 seats
 
-            // Fetch all available accounts
-            $stmtAccs = $db->query("SELECT * FROM accounts ORDER BY is_default DESC, id ASC");
+            // Filter accounts strictly by this session
+            $stmtAccs = $db->prepare("SELECT * FROM accounts WHERE session_id = :sid ORDER BY is_default DESC, id ASC");
+            $stmtAccs->execute([':sid' => $sessionId]);
             $accounts = $stmtAccs->fetchAll();
 
             if (empty($accounts)) {
                 jsonResponse(['success' => false, 'message' => '登録されたアカウントがありません。先にアカウントを設定してください。'], 400);
             }
 
-            $results = [];
-            $successCount = 0;
+            $acc = $accounts[0];
+            $client = new KobeLibraryClient();
+            try {
+                $client->login($acc['usercode'], $acc['password']);
+                $res = $client->reserveSlot($date, $slotId, $cornerCode, $areaCode);
 
-            // Try reserving for requested seat count
-            for ($i = 0; $i < $seatCount; $i++) {
-                // Pick account: if multiple accounts exist, use different accounts for multiple seats
-                $acc = $accounts[$i % count($accounts)];
-                
-                // If same account for second seat, shift to adjacent slot (e.g. next time slot)
-                $targetSlotId = $slotId;
-                if ($i > 0 && count($accounts) === 1) {
-                    $targetSlotId = (string)((int)$slotId + 1);
+                if ($res['success']) {
+                    DB::log("Reserved seat for {$acc['usercode']}: {$date} Slot {$slotId} (No. " . ($res['reservation_number'] ?? 'OK') . ")", 'success', null, [], $sessionId);
+                    jsonResponse([
+                        'success' => true,
+                        'message' => "予約を確保しました！ (予約番号: " . ($res['reservation_number'] ?? '受領済') . ")",
+                        'data' => $res
+                    ]);
+                } else {
+                    jsonResponse(['success' => false, 'message' => '予約受付されませんでした。既に満席の可能性があります。'], 500);
                 }
-
-                $client = new KobeLibraryClient();
-                try {
-                    $client->login($acc['usercode'], $acc['password']);
-                    $res = $client->reserveSlot($date, $targetSlotId, $cornerCode, $areaCode);
-                    if ($res['success']) {
-                        $successCount++;
-                        $results[] = [
-                            'account' => $acc['usercode'],
-                            'slot_id' => $targetSlotId,
-                            'reservation_number' => $res['reservation_number'],
-                            'success' => true
-                        ];
-                        DB::log("Reserved seat #{$successCount} for {$acc['usercode']}: {$date} Slot {$targetSlotId} (No. " . ($res['reservation_number'] ?? 'OK') . ")", 'success');
-                    } else {
-                        $results[] = [
-                            'account' => $acc['usercode'],
-                            'slot_id' => $targetSlotId,
-                            'success' => false,
-                            'message' => '予約受付されませんでした。'
-                        ];
-                    }
-                } catch (Exception $e) {
-                    $results[] = [
-                        'account' => $acc['usercode'],
-                        'slot_id' => $targetSlotId,
-                        'success' => false,
-                        'message' => $e->getMessage()
-                    ];
-                }
-            }
-
-            if ($successCount > 0) {
-                jsonResponse([
-                    'success' => true,
-                    'message' => "{$successCount}席の予約を確保しました！（全 {$seatCount}席 要求）",
-                    'reserved_count' => $successCount,
-                    'details' => $results
-                ]);
-            } else {
-                jsonResponse([
-                    'success' => false,
-                    'message' => '予約に失敗しました: ' . ($results[0]['message'] ?? '満席の可能性があります'),
-                    'details' => $results
-                ], 500);
+            } catch (Exception $e) {
+                jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
             }
             break;
 
@@ -365,6 +335,6 @@ try {
             break;
     }
 } catch (Exception $e) {
-    DB::log("API Error [{$action}]: " . $e->getMessage(), 'error');
+    DB::log("API Error [{$action}]: " . $e->getMessage(), 'error', null, [], $sessionId);
     jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
 }
