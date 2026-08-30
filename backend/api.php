@@ -116,6 +116,7 @@ try {
             break;
 
         case 'ai_recommend':
+            $area = $_GET['area'] ?? '60000';
             $date = $_GET['date'] ?? date('Y-m-d');
             $corner = $_GET['corner'] ?? '62000';
             $purpose = $_GET['purpose'] ?? 'focus';
@@ -137,21 +138,8 @@ try {
 
             // Fallback to public vacancies if unauthenticated or matrix empty
             if (empty($slots)) {
-                $pub = $client->getPublicVacancies($date, '60000', $corner);
-                foreach ($pub['slots'] ?? [] as $ps) {
-                    $time = '';
-                    if (preg_match('/(\d{1,2}:\d{2})/', $ps['label'], $tm)) {
-                        $time = $tm[1];
-                    }
-                    $slots[] = [
-                        'date' => $ps['date'],
-                        'slot_id' => $ps['slot_id'],
-                        'time' => $time ?: $ps['label'],
-                        'raw_label' => $ps['label'],
-                        'confirm_url' => $ps['url'],
-                        'available' => true
-                    ];
-                }
+                $pub = $client->getPublicVacancies($date, $area, $corner);
+                $slots = $pub['slots'] ?? [];
             }
 
             $scoredSlots = AIEngine::evaluateSlots($slots, $purpose, $preferredTime);

@@ -3,59 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>神戸市立図書館 座席WEB予約 業務支援・AI自動確保システム</title>
-    <!-- Tailwind CSS (utility base) -->
+    <title>神戸市立図書館 座席予約支援・AI自動確保システム</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: "Meiryo", "Hiragino Kaku Gothic ProN", "Yu Gothic", "MS PGothic", sans-serif;
-            background-color: #f0f2f5;
-            color: #333333;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
         }
-        /* JTC Enterprise UI Custom Classes */
+        /* JTC Enterprise Professional Styling */
         .jtc-header {
-            background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
             border-bottom: 3px solid #f59e0b;
         }
-        .jtc-box {
+        .jtc-panel {
             background-color: #ffffff;
             border: 1px solid #cbd5e1;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .section-bar {
+            background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+            color: #ffffff;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 3px 3px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .jtc-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #cbd5e1;
-            font-size: 13px;
+            font-size: 12px;
         }
         .jtc-table th {
-            background-color: #f1f5f9;
-            color: #1e293b;
+            background-color: #f8fafc;
+            color: #334155;
             border: 1px solid #cbd5e1;
             padding: 8px 10px;
             font-weight: 600;
-            text-align: left;
         }
         .jtc-table td {
             background-color: #ffffff;
             border: 1px solid #cbd5e1;
             padding: 8px 10px;
         }
-        .jtc-table tr:nth-child(even) td {
-            background-color: #f8fafc;
-        }
         .jtc-form-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #cbd5e1;
             font-size: 13px;
         }
         .jtc-form-table th {
-            background-color: #e2e8f0;
+            background-color: #f8fafc;
             color: #1e293b;
             border: 1px solid #cbd5e1;
-            padding: 9px 12px;
-            width: 25%;
+            padding: 9px 14px;
+            width: 24%;
             font-weight: 600;
             text-align: left;
             vertical-align: middle;
@@ -63,20 +69,21 @@
         .jtc-form-table td {
             background-color: #ffffff;
             border: 1px solid #cbd5e1;
-            padding: 8px 12px;
+            padding: 9px 14px;
             vertical-align: middle;
         }
         .jtc-tab-btn {
             border: 1px solid #cbd5e1;
             border-bottom: none;
             background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-            color: #334155;
+            color: #475569;
             font-weight: 600;
             padding: 8px 16px;
             font-size: 13px;
             cursor: pointer;
-            margin-right: 2px;
             border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+            transition: all 0.15s ease;
         }
         .jtc-tab-btn:hover {
             background: #ffffff;
@@ -84,7 +91,7 @@
         }
         .jtc-tab-btn.active {
             background: #ffffff;
-            color: #1e3a8a;
+            color: #1e40af;
             border-top: 3px solid #2563eb;
             border-bottom: 1px solid #ffffff;
             font-weight: 700;
@@ -94,57 +101,54 @@
             align-items: center;
             justify-content: center;
             padding: 6px 14px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             border-radius: 3px;
-            border: 1px solid #cbd5e1;
             cursor: pointer;
-            text-decoration: none;
+            border: 1px solid transparent;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            transition: all 0.1s ease-in-out;
+            transition: all 0.1s ease;
         }
         .jtc-btn-primary {
             background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-            border-color: #1e40af;
             color: #ffffff;
+            border-color: #1e40af;
         }
         .jtc-btn-primary:hover {
             background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
         }
         .jtc-btn-success {
             background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
-            border-color: #166534;
             color: #ffffff;
+            border-color: #166534;
         }
         .jtc-btn-success:hover {
             background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
         }
         .jtc-btn-danger {
             background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-            border-color: #991b1b;
             color: #ffffff;
-        }
-        .jtc-btn-danger:hover {
-            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+            border-color: #991b1b;
         }
         .jtc-btn-warning {
             background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
-            border-color: #9a3412;
             color: #ffffff;
+            border-color: #9a3412;
         }
         .jtc-btn-default {
-            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-            border-color: #cbd5e1;
+            background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
             color: #334155;
+            border-color: #cbd5e1;
         }
         .jtc-btn-default:hover {
             background: #ffffff;
+            border-color: #94a3b8;
         }
         .jtc-input {
-            border: 1px solid #94a3b8;
-            padding: 5px 8px;
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
             font-size: 13px;
-            border-radius: 2px;
+            border-radius: 3px;
             background-color: #ffffff;
             color: #0f172a;
         }
@@ -152,105 +156,70 @@
             outline: 2px solid #2563eb;
             border-color: #2563eb;
         }
-        .jtc-badge-required {
-            background-color: #ef4444;
-            color: #ffffff;
-            font-size: 11px;
-            padding: 1px 5px;
-            border-radius: 2px;
-            margin-right: 4px;
-        }
-        .jtc-badge-any {
-            background-color: #64748b;
-            color: #ffffff;
-            font-size: 11px;
-            padding: 1px 5px;
-            border-radius: 2px;
-            margin-right: 4px;
-        }
-        .jtc-notice-box {
-            background-color: #fffbeb;
-            border: 1px solid #fde68a;
-            border-left: 4px solid #f59e0b;
-            padding: 10px 14px;
-            font-size: 12px;
-            line-height: 1.6;
-        }
-        .jtc-info-box {
-            background-color: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-left: 4px solid #3b82f6;
-            padding: 10px 14px;
-            font-size: 12px;
-            line-height: 1.6;
-        }
-        .section-header {
-            background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
-            color: #ffffff;
-            padding: 7px 12px;
-            font-size: 14px;
-            font-weight: 700;
-            border-radius: 2px 2px 0 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        /* Vacancy Visual Styles: Yellow-Green for Available / Gray for Occupied */
+        /* Accurate Visual Availability Classes */
         .slot-available {
-            background-color: #d9f99d !important; /* Yellow-Green / Lime */
-            border: 2px solid #65a30d !important;
-            color: #14532d !important;
-            font-weight: 700 !important;
+            background-color: #ecfccb !important; /* Yellow-Green / Lime */
+            border: 2px solid #84cc16 !important;
+            color: #365314 !important;
         }
         .slot-available:hover {
-            background-color: #bef264 !important;
+            background-color: #d9f99d !important;
         }
-        .slot-occupied {
-            background-color: #e2e8f0 !important; /* Muted Gray */
+        .slot-full {
+            background-color: #f1f5f9 !important; /* Muted Gray */
             border: 1px solid #cbd5e1 !important;
             color: #64748b !important;
         }
+        .slot-closed {
+            background-color: #e2e8f0 !important; /* Darker Gray for Closed / Monday */
+            border: 1px solid #cbd5e1 !important;
+            color: #475569 !important;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col text-slate-800">
+<body class="min-h-screen flex flex-col">
 
-    <!-- Top Government/JTC Style Header Bar -->
+    <!-- Top Banner & System ID -->
     <header class="jtc-header text-white">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 bg-white text-blue-900 font-extrabold flex items-center justify-center rounded-sm text-lg border border-blue-300 shadow">
+                <div class="w-10 h-10 bg-white text-blue-900 font-extrabold flex items-center justify-center rounded text-xl shadow border border-blue-200">
                     館
                 </div>
                 <div>
-                    <div class="text-[11px] text-blue-200 tracking-wider font-semibold">神戸市立図書館 庁内端末業務支援系システム</div>
-                    <h1 class="text-base sm:text-lg font-bold tracking-tight">座席WEB予約 業務支援・AI自動確保ポータル (eBooth-AI v2.4)</h1>
+                    <div class="text-[11px] text-blue-200 tracking-wider font-semibold">神戸市立図書館 業務支援系・座席予約自動化基盤</div>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight">座席WEB予約支援・AI自動確保ポータル (Libraryes v2.5)</h1>
                 </div>
             </div>
 
-            <!-- Current User / Status Strip -->
-            <div class="flex items-center space-x-2 text-xs bg-blue-950/80 px-3 py-1.5 rounded border border-blue-800">
-                <span class="text-blue-300">ログイン利用者:</span>
-                <span id="header-user-code" class="font-bold text-amber-300 font-mono">未認証</span>
-                <span id="header-user-name" class="text-slate-300 text-[11px]"></span>
-                <span class="text-blue-600">|</span>
-                <span class="text-slate-300">同期: <span id="header-time" class="font-mono font-semibold">取得中</span></span>
+            <!-- Login & Sync Status Bar -->
+            <div class="flex items-center space-x-3 text-xs bg-slate-900/80 px-3.5 py-2 rounded border border-slate-700">
+                <div>
+                    <span class="text-slate-400">利用者番号:</span>
+                    <span id="header-user-code" class="font-bold text-amber-300 font-mono ml-1">未認証</span>
+                    <span id="header-user-name" class="text-slate-300 ml-1"></span>
+                </div>
+                <span class="text-slate-600">|</span>
+                <div>
+                    <span class="text-slate-400">端末時刻:</span>
+                    <span id="header-time" class="font-mono text-slate-200 ml-1 font-semibold">--:--:--</span>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Sub-status Breadcrumb & Quick Action Strip -->
+    <!-- Sub Header Status Bar -->
     <div class="bg-slate-200 border-b border-slate-300 py-1.5 px-4 text-xs text-slate-600">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-1 font-semibold">
-                <span>ポータルトップ</span>
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div class="flex items-center space-x-1.5 font-semibold">
+                <span>ポータル</span>
                 <span>&gt;</span>
                 <span class="text-blue-900" id="current-breadcrumb">AI最適予約・自動支援コンソール</span>
             </div>
             <div class="flex items-center space-x-3 text-[11px]">
-                <span>対象基幹: <strong class="text-blue-950">神戸市立図書館 eBoothWeb</strong></span>
-                <span>データベース: <strong class="text-emerald-700">SQLite3 (libraryes.db)</strong></span>
-                <span>セッション暗号化: <strong class="text-emerald-700">HTTPS (TLS1.3)</strong></span>
+                <span>定休日規則: <strong class="text-red-700">毎週月曜休館</strong></span>
+                <span>基幹連携: <strong class="text-blue-950">eBoothWeb (tackport)</strong></span>
+                <span>DB: <strong class="text-emerald-700">SQLite3</strong></span>
             </div>
         </div>
     </div>
@@ -258,21 +227,13 @@
     <!-- Main Workspace -->
     <main class="max-w-7xl w-full mx-auto px-4 py-4 flex-1 space-y-4">
 
-        <!-- Important Notice Box (JTC Style) -->
-        <div class="jtc-notice-box flex items-start space-x-2">
-            <span class="font-bold text-amber-800 shrink-0">【重要なお知らせ】</span>
-            <div class="text-slate-700">
-                本システムは、神戸市立図書館の公式座席予約基盤と直結しています。<strong>空き枠は黄緑色（◯ 空席あり）</strong>、<strong>満席・受付終了枠は灰色（✕ 満席）</strong>でリアルタイム表示されます。上部の検索フィルターおよびソート機能により、条件に合致する枠を高速に絞り込んで予約可能です。
-            </div>
-        </div>
-
-        <!-- System Notification Toast (Banner) -->
-        <div id="toast-banner" class="hidden p-3 rounded text-xs font-bold border flex items-center justify-between">
+        <!-- Notification Banner Box -->
+        <div id="toast-banner" class="hidden p-3 rounded text-xs font-bold border flex items-center justify-between shadow-sm">
             <span id="toast-text"></span>
-            <button type="button" onclick="hideToast()" class="text-slate-500 hover:text-slate-800 font-bold ml-4">✕ 閉じる</button>
+            <button type="button" onclick="hideToast()" class="text-slate-500 hover:text-slate-800 font-bold ml-4">✕</button>
         </div>
 
-        <!-- Tab Navigation (JTC Tab Header) -->
+        <!-- Tab Headers -->
         <div class="flex flex-wrap border-b border-slate-300 pt-1 -mb-[1px]">
             <button type="button" onclick="switchTab('ai_scheduler')" id="tab-btn-ai_scheduler" class="jtc-tab-btn active">
                 ■ AI 最適時間 予約支援
@@ -293,7 +254,7 @@
                 ■ 予約確認・取消管理
             </button>
             <button type="button" onclick="switchTab('account')" id="tab-btn-account" class="jtc-tab-btn">
-                ■ 図書館アカウント認証設定
+                ■ 図書館アカウント設定
             </button>
         </div>
 
@@ -301,8 +262,8 @@
         <!-- TAB 1: AI 最適時間 予約支援 -->
         <!-- ========================================== -->
         <section id="tab-content-ai_scheduler" class="space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ AI 座席予約パラメータ設定 & 最適スロット自動診断</span>
                     <span class="text-xs font-normal text-blue-100">※利用目的に合わせてAIが覚醒度・静寂度・混雑傾向を自動スコアリングします</span>
                 </div>
@@ -310,7 +271,7 @@
                     <table class="jtc-form-table">
                         <tbody>
                             <tr>
-                                <th><span class="jtc-badge-required">必須</span>利用目的プロファイル</th>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>利用目的プロファイル</th>
                                 <td>
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         <label class="flex items-center space-x-1.5 p-2 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-blue-50">
@@ -330,15 +291,15 @@
                                             <span class="font-bold text-xs text-blue-950">④ 読書・軽読</span>
                                         </label>
                                     </div>
-                                    <div id="purpose-desc" class="text-xs text-slate-500 mt-1.5 font-sans">
+                                    <div id="purpose-desc" class="text-xs text-slate-500 mt-1.5">
                                         【集中学習モード】午前および夕方の静寂時間帯を優先選定し、周囲の出入りが少ない快適な枠を自動判定します。
                                     </div>
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="jtc-badge-required">必須</span>対象施設（図書館）</th>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>対象施設（図書館）</th>
                                 <td>
-                                    <select id="ai-area" class="jtc-input w-full sm:w-80">
+                                    <select id="ai-area" onchange="onAreaSelectChange('ai-area', 'ai-corner')" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
                                         <option value="60000" selected>垂水図書館</option>
                                         <option value="30000">中央図書館</option>
                                         <option value="40000">東灘図書館</option>
@@ -346,12 +307,13 @@
                                         <option value="10000">名谷図書館</option>
                                         <option value="20000">西図書館</option>
                                     </select>
+                                    <span class="text-xs text-slate-500 ml-2">※図書館を変更すると座席種別が自動更新されます</span>
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="jtc-badge-required">必須</span>座席種別（コーナー）</th>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別（コーナー）</th>
                                 <td>
-                                    <select id="ai-corner" class="jtc-input w-full sm:w-80">
+                                    <select id="ai-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
                                         <option value="62000" selected>2F キャレル席</option>
                                         <option value="61000">2F 南カウンター席</option>
                                         <option value="63000">2F 西カウンター席</option>
@@ -361,13 +323,14 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="jtc-badge-required">必須</span>希望利用日</th>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>希望利用日</th>
                                 <td>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <button type="button" onclick="setPresetDate('TODAY')" class="jtc-btn jtc-btn-default text-xs">本日</button>
                                         <button type="button" onclick="setPresetDate('TOMORROW')" class="jtc-btn jtc-btn-default text-xs">明日</button>
                                         <button type="button" onclick="setPresetDate('THIS_WEEKEND')" class="jtc-btn jtc-btn-default text-xs">今週末(土)</button>
-                                        <input type="date" id="ai-date" class="jtc-input">
+                                        <input type="date" id="ai-date" class="jtc-input font-bold">
+                                        <span id="ai-date-note" class="text-xs text-red-600 font-semibold ml-2"></span>
                                     </div>
                                 </td>
                             </tr>
@@ -375,20 +338,20 @@
                     </table>
 
                     <div class="flex justify-end space-x-2 pt-1">
-                        <button type="button" onclick="executeAiAnalysis()" class="jtc-btn jtc-btn-primary py-2 px-6">
+                        <button type="button" onclick="executeAiAnalysis()" class="jtc-btn jtc-btn-primary py-2 px-6 text-sm">
                             ▶ AI 最適スロット診断 & 空席マトリクス解析を実行
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- AI Filter & Sort Controls -->
-            <div class="jtc-box p-3 bg-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <!-- Filter Toolbar -->
+            <div class="jtc-panel p-3 bg-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div class="flex flex-wrap items-center gap-3">
                     <span class="font-bold text-slate-700">【絞り込み検索】:</span>
-                    <label class="flex items-center space-x-1 cursor-pointer">
+                    <label class="flex items-center space-x-1 cursor-pointer bg-lime-100 text-lime-900 px-2 py-1 rounded border border-lime-400 font-semibold">
                         <input type="checkbox" id="filter-avail-only" onchange="applyFiltersAndSort()" checked class="rounded text-blue-600">
-                        <span class="font-semibold text-emerald-800">黄緑色（空席あり枠のみ表示）</span>
+                        <span>黄緑色（空席あり枠のみ表示）</span>
                     </label>
                     <span class="text-slate-300">|</span>
                     <span>時間帯:</span>
@@ -411,8 +374,8 @@
                 </div>
 
                 <div class="flex items-center space-x-2">
-                    <span class="font-bold text-slate-700">【ソート順】:</span>
-                    <select id="sort-order" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
+                    <span class="font-bold text-slate-700">【並び順】:</span>
+                    <select id="sort-order" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs font-semibold">
                         <option value="score_desc">AI推奨スコア順（高い順）</option>
                         <option value="time_asc">日時順（早い順）</option>
                         <option value="time_desc">日時順（遅い順）</option>
@@ -422,8 +385,8 @@
             </div>
 
             <!-- AI Output Table / Cards -->
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ AI 推奨スロット判定結果台帳</span>
                     <span id="ai-result-count" class="text-xs font-normal bg-blue-900 text-blue-100 px-2 py-0.5 rounded">未診断</span>
                 </div>
@@ -441,27 +404,38 @@
         <!-- TAB 2: 空席週間マトリクス（黄緑/灰色 台帳） -->
         <!-- ========================================== -->
         <section id="tab-content-matrix_view" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
-                    <span>▼ 7日間 空席週間マトリクス台帳 (黄緑＝空席あり / 灰色＝満席)</span>
+            <div class="jtc-panel">
+                <div class="section-bar">
+                    <span>▼ 7日間 空席週間マトリクス台帳 (黄緑＝空席あり / 灰色＝満席・休館)</span>
                     <div class="flex items-center space-x-2">
                         <span class="inline-block w-3 h-3 bg-lime-300 border border-lime-600 rounded-sm"></span>
                         <span class="text-xs text-white">黄緑: ◯ 空席あり</span>
                         <span class="inline-block w-3 h-3 bg-slate-300 border border-slate-400 rounded-sm ml-2"></span>
-                        <span class="text-xs text-slate-300">灰色: ✕ 満席</span>
+                        <span class="text-xs text-slate-300">灰色: ✕ 満席/休館</span>
                     </div>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                        <div class="flex items-center space-x-2 text-xs">
-                            <span class="font-bold text-slate-700">対象座席:</span>
-                            <select id="matrix-corner" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="font-bold text-slate-700">対象図書館:</span>
+                            <select id="matrix-area" onchange="onAreaSelectChange('matrix-area', 'matrix-corner'); loadWeeklyMatrix();" class="jtc-input py-1 text-xs font-bold text-blue-950">
+                                <option value="60000" selected>垂水図書館</option>
+                                <option value="30000">中央図書館</option>
+                                <option value="40000">東灘図書館</option>
+                                <option value="50000">北神図書館</option>
+                                <option value="10000">名谷図書館</option>
+                                <option value="20000">西図書館</option>
+                            </select>
+
+                            <span class="font-bold text-slate-700 ml-2">座席種別:</span>
+                            <select id="matrix-corner" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs font-bold text-blue-950">
                                 <option value="62000" selected>2F キャレル席</option>
                                 <option value="61000">2F 南カウンター席</option>
                                 <option value="63000">2F 西カウンター席</option>
                                 <option value="64000">3F 学習室</option>
                                 <option value="66000">セミナー室</option>
                             </select>
+
                             <span class="font-bold text-slate-700 ml-2">基準日:</span>
                             <input type="date" id="matrix-date" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs">
                         </div>
@@ -497,13 +471,13 @@
         <!-- TAB 3: 空席即時確保（スナイプ） -->
         <!-- ========================================== -->
         <section id="tab-content-instant_snipe" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ 開いている時間を直ぐに取る（即時空き枠スナイパー）</span>
                     <span class="text-xs font-normal text-blue-100">※キャンセル等で解放された空席を検知し即座に予約を確定します</span>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div class="jtc-info-box">
+                    <div class="bg-amber-50 border border-amber-300 p-3 rounded text-xs text-amber-900">
                         <strong>【即時スナイプ機能概要】</strong><br>
                         指定した日付・座席において、現在空いている枠（黄緑色の枠）を直ちに予約確保します。万一満席（灰色枠）の場合でも、バックグラウンド監視ワーカーが常駐し、他利用者のキャンセルが発生した瞬間にミリ秒単位で奪取します。
                     </div>
@@ -511,19 +485,33 @@
                     <table class="jtc-form-table">
                         <tbody>
                             <tr>
-                                <th>対象日付</th>
-                                <td><input type="date" id="snipe-date" class="jtc-input"></td>
+                                <th>対象施設（図書館）</th>
+                                <td>
+                                    <select id="snipe-area" onchange="onAreaSelectChange('snipe-area', 'snipe-corner'); loadLiveVacancies();" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
+                                        <option value="60000" selected>垂水図書館</option>
+                                        <option value="30000">中央図書館</option>
+                                        <option value="40000">東灘図書館</option>
+                                        <option value="50000">北神図書館</option>
+                                        <option value="10000">名谷図書館</option>
+                                        <option value="20000">西図書館</option>
+                                    </select>
+                                </td>
                             </tr>
                             <tr>
                                 <th>座席コーナー</th>
                                 <td>
-                                    <select id="snipe-corner" class="jtc-input w-full sm:w-80">
+                                    <select id="snipe-corner" onchange="loadLiveVacancies()" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
                                         <option value="62000" selected>2F キャレル席</option>
                                         <option value="61000">2F 南カウンター席</option>
                                         <option value="63000">2F 西カウンター席</option>
                                         <option value="64000">3F 学習室</option>
+                                        <option value="66000">セミナー室</option>
                                     </select>
                                 </td>
+                            </tr>
+                            <tr>
+                                <th>対象日付</th>
+                                <td><input type="date" id="snipe-date" onchange="loadLiveVacancies()" class="jtc-input"></td>
                             </tr>
                             <tr>
                                 <th>時間帯指定</th>
@@ -553,7 +541,7 @@
                     <!-- Live Grid -->
                     <div class="mt-4 pt-4 border-t border-slate-200">
                         <div class="font-bold text-xs text-slate-700 mb-2 flex items-center justify-between">
-                            <span>【現時点の空席一覧】（黄緑＝空き枠 / 灰色＝満席）</span>
+                            <span>【現時点の空席一覧】（黄緑＝空き枠 / 灰色＝満席・休館）</span>
                         </div>
                         <div id="live-vacancies-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                             <div class="p-4 text-center text-slate-500 text-xs col-span-full border border-dashed border-slate-300">
@@ -569,13 +557,13 @@
         <!-- TAB 4: 指定日時絶対確保（ピンポイント） -->
         <!-- ========================================== -->
         <section id="tab-content-absolute_sniper" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ 取りたい時間に絶対に取る（ピンポイント・ミリ秒スナイパー）</span>
                     <span class="text-xs font-normal text-blue-100">※受付開始日時や特定枠をミリ秒単位で強制ロックします</span>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div class="jtc-notice-box">
+                    <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【ピンポイント確保仕様】</strong><br>
                         1週間前の予約解禁時刻（朝9:00等）や激戦時間帯をピンポイント指定します。事前キャッシュしたCSRFトークンを用い、受付開始と同時に200ms周期のミリ秒連続リクエストを投入して枠を確実に奪取します。
                     </div>
@@ -583,23 +571,48 @@
                     <table class="jtc-form-table">
                         <tbody>
                             <tr>
-                                <th><span class="jtc-badge-required">必須</span>確保目標日</th>
-                                <td><input type="date" id="target-date" class="jtc-input"></td>
-                            </tr>
-                            <tr>
-                                <th><span class="jtc-badge-required">必須</span>確保目標スロット</th>
+                                <th>対象施設（図書館）</th>
                                 <td>
-                                    <select id="target-time" class="jtc-input w-full sm:w-80">
-                                        <option value="10:10">10:10 ～ 12:10 (第1枠)</option>
-                                        <option value="12:15">12:15 ～ 14:15 (第2枠)</option>
-                                        <option value="14:20">14:20 ～ 16:20 (第3枠)</option>
-                                        <option value="16:25">16:25 ～ 18:25 (第4枠)</option>
-                                        <option value="18:30">18:30 ～ 20:30 (第5枠)</option>
+                                    <select id="target-area" onchange="onAreaSelectChange('target-area', 'target-corner')" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
+                                        <option value="60000" selected>垂水図書館</option>
+                                        <option value="30000">中央図書館</option>
+                                        <option value="40000">東灘図書館</option>
+                                        <option value="50000">北神図書館</option>
+                                        <option value="10000">名谷図書館</option>
+                                        <option value="20000">西図書館</option>
                                     </select>
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="jtc-badge-any">任意</span>予約解禁日時 (タイマー起動時刻)</th>
+                                <th>座席コーナー</th>
+                                <td>
+                                    <select id="target-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
+                                        <option value="62000" selected>2F キャレル席</option>
+                                        <option value="61000">2F 南カウンター席</option>
+                                        <option value="63000">2F 西カウンター席</option>
+                                        <option value="64000">3F 学習室</option>
+                                        <option value="66000">セミナー室</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>確保目標日</th>
+                                <td><input type="date" id="target-date" class="jtc-input font-bold"></td>
+                            </tr>
+                            <tr>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>確保目標スロット</th>
+                                <td>
+                                    <select id="target-time" class="jtc-input w-full sm:w-80 font-bold">
+                                        <option value="10:10">10:10 ～ 12:10 (第1枠: 午前)</option>
+                                        <option value="12:15">12:15 ～ 14:15 (第2枠: 昼)</option>
+                                        <option value="14:20">14:20 ～ 16:20 (第3枠: 午後)</option>
+                                        <option value="16:25">16:25 ～ 18:25 (第4枠: 夕方)</option>
+                                        <option value="18:30">18:30 ～ 20:30 (第5枠: 夜間)</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><span class="bg-slate-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">任意</span>予約解禁日時 (タイマー起動時刻)</th>
                                 <td>
                                     <input type="datetime-local" id="target-launch-time" class="jtc-input">
                                     <span class="text-xs text-slate-500 ml-2">※未指定時は直ちにミリ秒アタックを開始します。</span>
@@ -621,10 +634,10 @@
         <!-- TAB 5: 自動監視タスク管理台帳 -->
         <!-- ========================================== -->
         <section id="tab-content-tasks" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ 自動予約・監視タスク管理台帳</span>
-                    <button type="button" onclick="loadStatus()" class="text-xs bg-blue-900 hover:bg-blue-800 text-white px-2 py-1 rounded border border-blue-400">
+                    <button type="button" onclick="loadStatus()" class="text-xs bg-blue-900 hover:bg-blue-800 text-white px-2.5 py-1 rounded border border-blue-400">
                         ⟳ 最新台帳更新
                     </button>
                 </div>
@@ -653,10 +666,10 @@
         <!-- TAB 6: 予約確認・取消管理 -->
         <!-- ========================================== -->
         <section id="tab-content-my_reservations" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ 現在取得済みの座席予約一覧</span>
-                    <button type="button" onclick="loadMyReservations()" class="text-xs bg-blue-900 hover:bg-blue-800 text-white px-2 py-1 rounded border border-blue-400">
+                    <button type="button" onclick="loadMyReservations()" class="text-xs bg-blue-900 hover:bg-blue-800 text-white px-2.5 py-1 rounded border border-blue-400">
                         ⟳ 図書館システムから再照会
                     </button>
                 </div>
@@ -672,12 +685,12 @@
         <!-- TAB 7: 図書館アカウント認証設定 -->
         <!-- ========================================== -->
         <section id="tab-content-account" class="hidden space-y-4">
-            <div class="jtc-box">
-                <div class="section-header">
+            <div class="jtc-panel">
+                <div class="section-bar">
                     <span>▼ 神戸市立図書館 公式アカウント認証設定</span>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div class="jtc-info-box">
+                    <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【認証情報について】</strong><br>
                         神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。本システムが公式予約システム（eBoothWeb）に対して自動認証・セッション確立を行い、予約処理を代行します。
                     </div>
@@ -686,21 +699,21 @@
                         <table class="jtc-form-table">
                             <tbody>
                                 <tr>
-                                    <th><span class="jtc-badge-required">必須</span>利用者番号 (カード番号)</th>
+                                    <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>利用者番号 (カード番号)</th>
                                     <td>
-                                        <input type="text" id="acc-usercode" placeholder="例: P182790698" required class="jtc-input w-full sm:w-80 font-mono">
+                                        <input type="text" id="acc-usercode" placeholder="例: P182790698" required class="jtc-input w-full sm:w-80 font-mono font-bold">
                                         <span class="text-xs text-slate-500 block mt-1">※先頭のアルファベット「P」は大文字・半角で入力してください。</span>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th><span class="jtc-badge-required">必須</span>K-libネット パスワード</th>
+                                    <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>K-libネット パスワード</th>
                                     <td>
                                         <input type="password" id="acc-password" placeholder="パスワードを入力" required class="jtc-input w-full sm:w-80 font-mono">
                                         <span class="text-xs text-slate-500 block mt-1">※図書館公式ウェブサイトで登録したパスワードです。</span>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th><span class="jtc-badge-any">任意</span>アカウント識別名</th>
+                                    <th><span class="bg-slate-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">任意</span>アカウント識別名</th>
                                     <td>
                                         <input type="text" id="acc-name" placeholder="例: 個人用カード" class="jtc-input w-full sm:w-80">
                                     </td>
@@ -755,6 +768,38 @@
 
     <!-- Client-side Controller Script -->
     <script>
+        const LIBRARY_CORNERS = {
+            '60000': [
+                {id: '62000', name: '2F キャレル席'},
+                {id: '61000', name: '2F 南カウンター席'},
+                {id: '63000', name: '2F 西カウンター席'},
+                {id: '64000', name: '3F 学習室'},
+                {id: '66000', name: 'セミナー室'}
+            ],
+            '30000': [
+                {id: '31000', name: '2号館2F 閲覧室1'},
+                {id: '32000', name: '2号館3F 閲覧室2'},
+                {id: '33000', name: '1号館2F 閲覧室3'},
+                {id: '34000', name: '1号館3F 閲覧室4'}
+            ],
+            '40000': [
+                {id: '41000', name: '一般閲覧席'},
+                {id: '42000', name: 'キャレル席'}
+            ],
+            '50000': [
+                {id: '51000', name: '一般閲覧席'},
+                {id: '52000', name: 'キャレル席'}
+            ],
+            '10000': [
+                {id: '11000', name: '一般閲覧席'},
+                {id: '12000', name: 'キャレル席'}
+            ],
+            '20000': [
+                {id: '21000', name: '一般閲覧席'},
+                {id: '22000', name: 'キャレル席'}
+            ]
+        };
+
         let currentPurpose = 'focus';
         let currentStatusData = null;
         let cachedAiRecommendations = [];
@@ -777,6 +822,19 @@
                         String(now.getSeconds()).padStart(2, '0');
             const el = document.getElementById('header-time');
             if (el) el.textContent = str;
+        }
+
+        function onAreaSelectChange(areaSelectId, cornerSelectId) {
+            const areaEl = document.getElementById(areaSelectId);
+            const cornerEl = document.getElementById(cornerSelectId);
+            if (!areaEl || !cornerEl) return;
+
+            const areaCode = areaEl.value;
+            const corners = LIBRARY_CORNERS[areaCode] || LIBRARY_CORNERS['60000'];
+
+            cornerEl.innerHTML = corners.map((c, i) => `
+                <option value="${c.id}" ${i === 0 ? 'selected' : ''}>${c.name}</option>
+            `).join('');
         }
 
         function showToast(msg, isSuccess = true) {
@@ -839,6 +897,19 @@
             if (snipeDate) snipeDate.value = val;
             if (targetDate) targetDate.value = val;
             if (matrixDate) matrixDate.value = val;
+
+            checkMondayClosed(val);
+        }
+
+        function checkMondayClosed(dateStr) {
+            const noteEl = document.getElementById('ai-date-note');
+            if (!noteEl) return;
+            const d = new Date(dateStr);
+            if (d.getDay() === 1) { // Monday
+                noteEl.textContent = '【注意】選択日は月曜日のため休館日（定休日）です。';
+            } else {
+                noteEl.textContent = '';
+            }
         }
 
         function changePurpose(purpose) {
@@ -877,7 +948,7 @@
                 userCodeEl.textContent = accounts[0].usercode;
                 userNameEl.textContent = `(${accounts[0].name || '利用者'})`;
             } else {
-                userCodeEl.textContent = '未登録 (設定タブで登録要)';
+                userCodeEl.textContent = '未認証 (設定タブで登録要)';
                 userNameEl.textContent = '';
             }
         }
@@ -980,27 +1051,28 @@
         }
 
         async function executeAiAnalysis() {
-            const date = document.getElementById('ai-date').value;
+            const area = document.getElementById('ai-area').value;
             const corner = document.getElementById('ai-corner').value;
+            const date = document.getElementById('ai-date').value;
             const container = document.getElementById('ai-result-container');
             const resultBadge = document.getElementById('ai-result-count');
 
             container.innerHTML = `<div class="text-center py-8 text-blue-900 text-xs font-bold">空席マトリクスを取得しAIスコアリングを計算中...</div>`;
 
             try {
-                const res = await fetch(`backend/api.php?action=ai_recommend&date=${date}&corner=${corner}&purpose=${currentPurpose}`);
+                const res = await fetch(`backend/api.php?action=ai_recommend&area=${area}&date=${date}&corner=${corner}&purpose=${currentPurpose}`);
                 const data = await res.json();
 
                 if (!data.success || !data.top_recommendations || data.top_recommendations.length === 0) {
-                    resultBadge.textContent = '候補 0件 (満席)';
+                    resultBadge.textContent = '候補 0件 (満席または休館)';
                     resultBadge.className = 'text-xs font-normal bg-rose-800 text-white px-2 py-0.5 rounded';
                     container.innerHTML = `
-                        <div class="jtc-notice-box">
-                            <strong>【判定結果: 対象日は現在満席です】</strong><br>
-                            指定の座席コーナーは現在空席がありません。「空き枠即時奪取タスク」を登録すると、キャンセルが出た瞬間にAIが自動で確保します。
+                        <div class="bg-amber-50 border border-amber-300 p-4 rounded text-xs text-amber-900">
+                            <strong>【判定結果: 指定条件では現在予約可能な空席がありません】</strong><br>
+                            満席または休館日の可能性があります。「空き枠即時奪取タスク」を登録すると、キャンセルが出た瞬間にAIが自動で確保します。
                             <div class="mt-2">
-                                <button type="button" onclick="createInstantSnipeForDate('${date}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs">
-                                    ⚡ この日のキャンセル待ち自動スナイパーを起動
+                                <button type="button" onclick="createInstantSnipeForDate('${date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs">
+                                    ⚡ この条件でキャンセル待ち自動スナイパーを起動
                                 </button>
                             </div>
                         </div>
@@ -1020,6 +1092,7 @@
         function applyFiltersAndSort() {
             const container = document.getElementById('ai-result-container');
             const resultBadge = document.getElementById('ai-result-count');
+            const area = document.getElementById('ai-area').value;
             const corner = document.getElementById('ai-corner').value;
 
             const availOnly = document.getElementById('filter-avail-only').checked;
@@ -1029,9 +1102,9 @@
 
             let filtered = [...cachedAiRecommendations];
 
-            // 1. Availability filter
+            // 1. Availability filter (genuine available only)
             if (availOnly) {
-                filtered = filtered.filter(s => s.available === true);
+                filtered = filtered.filter(s => s.available === true && !s.is_closed && !s.is_full);
             }
 
             // 2. Time range filter
@@ -1064,27 +1137,37 @@
             }
 
             container.innerHTML = filtered.map((slot, idx) => {
-                const isAvail = slot.available !== false;
-                const statusBadge = isAvail 
-                    ? '<span class="px-2 py-0.5 rounded text-xs font-bold bg-lime-200 text-lime-950 border border-lime-500">◯ 空席あり</span>'
-                    : '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300">✕ 満席</span>';
+                const isAvail = slot.available === true && !slot.is_closed && !slot.is_full;
+                const isClosed = slot.is_closed === true;
 
-                const cardBorder = isAvail ? 'slot-available' : 'slot-occupied';
+                let statusBadge = '';
+                let cardClass = '';
+
+                if (isClosed) {
+                    statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-300 text-slate-800 border border-slate-400">休館日 (月曜定休)</span>';
+                    cardClass = 'slot-closed';
+                } else if (isAvail) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-lime-300 text-lime-950 border border-lime-600">◯ 空席あり (${slot.remain_text || '予約可'})</span>`;
+                    cardClass = 'slot-available';
+                } else {
+                    statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300">✕ 満席</span>';
+                    cardClass = 'slot-full';
+                }
 
                 return `
-                    <div class="border p-4 rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 ${cardBorder}">
+                    <div class="border p-4 rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 ${cardClass}">
                         <div>
                             <div class="flex items-center space-x-2">
                                 <span class="px-2 py-0.5 text-xs font-bold ${idx === 0 && isAvail ? 'bg-blue-800 text-white' : 'bg-slate-700 text-white'} rounded">
                                     第 ${idx + 1} 推奨枠
                                 </span>
-                                <span class="text-base font-bold font-mono">${slot.time || slot.raw_label}</span>
+                                <span class="text-base font-bold font-mono">${slot.time_range || slot.time || slot.raw_label}</span>
                                 ${statusBadge}
                                 <span class="text-xs px-2 py-0.5 rounded font-semibold bg-white/80 border border-slate-300">
                                     ${slot.recommendation_tag || '標準'}
                                 </span>
                             </div>
-                            <div class="text-xs text-slate-700 mt-1 font-mono">対象日: ${slot.date} | 座席枠ID: ${slot.slot_id}</div>
+                            <div class="text-xs text-slate-700 mt-1 font-mono">対象日: ${slot.date} | スロット: ${slot.label || slot.slot_id}</div>
                             <div class="text-xs text-slate-800 mt-2 bg-white/90 p-2 rounded border border-slate-300">
                                 <strong class="text-blue-900">■ AI 判定理由:</strong>
                                 <ul class="list-disc list-inside mt-0.5 text-slate-700">
@@ -1099,11 +1182,11 @@
                                 <span class="text-2xl font-extrabold text-blue-950 font-mono">${slot.ai_score || 0}<span class="text-xs text-slate-500"> /100点</span></span>
                             </div>
                             ${isAvail ? `
-                                <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs">
+                                <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs font-bold">
                                     ✔ この枠を即時予約
                                 </button>
                             ` : `
-                                <button type="button" onclick="createInstantSnipeForDate('${slot.date}', '${corner}')" class="jtc-btn jtc-btn-default text-xs py-1.5 px-3">
+                                <button type="button" onclick="createInstantSnipeForDate('${slot.date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-default text-xs py-1.5 px-3">
                                     ⚡ キャンセル待ちスナイプ登録
                                 </button>
                             `}
@@ -1114,6 +1197,7 @@
         }
 
         async function loadWeeklyMatrix() {
+            const area = document.getElementById('matrix-area').value;
             const corner = document.getElementById('matrix-corner').value;
             const date = document.getElementById('matrix-date').value;
             const tbody = document.getElementById('weekly-matrix-tbody');
@@ -1121,7 +1205,7 @@
             tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">週間空席台帳を取得・解析中...</td></tr>`;
 
             try {
-                const res = await fetch(`backend/api.php?action=public_vacancies&date=${date}&corner=${corner}`);
+                const res = await fetch(`backend/api.php?action=public_vacancies&area=${area}&date=${date}&corner=${corner}`);
                 const data = await res.json();
 
                 if (!data.success || !data.data.matrix) {
@@ -1135,10 +1219,11 @@
                 data.data.matrix.forEach((dayRow, dIdx) => {
                     const thEl = document.getElementById(`m-th-${dIdx}`);
                     if (thEl) {
+                        const isMon = dayRow.weekday === '月';
                         const isSat = dayRow.weekday === '土';
                         const isSun = dayRow.weekday === '日';
-                        let colorClass = isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800');
-                        thEl.innerHTML = `<span class="block text-[11px] text-slate-500 font-mono">${dayRow.date_formatted.slice(5)}</span><strong class="${colorClass}">${dayRow.weekday}曜</strong>`;
+                        let colorClass = isMon ? 'text-rose-700 font-extrabold' : (isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800'));
+                        thEl.innerHTML = `<span class="block text-[11px] text-slate-500 font-mono">${dayRow.md}</span><strong class="${colorClass}">${dayRow.weekday}曜${isMon ? ' (休)' : ''}</strong>`;
                     }
                 });
 
@@ -1148,25 +1233,39 @@
                     {id: '1', time: '12:15 - 14:15', label: '第2枠 (昼)'},
                     {id: '2', time: '14:20 - 16:20', label: '第3枠 (午後)'},
                     {id: '3', time: '16:25 - 18:25', label: '第4枠 (夕方)'},
-                    {id: '4', time: '18:30 - 20:30', label: '第5枠 (夜間)'},
+                    {id: '4', time: '18:30 - 19:50', label: '第5枠 (夜間)'},
                 ];
 
                 tbody.innerHTML = slotDefinitions.map((sDef, sIdx) => {
                     const cells = data.data.matrix.map(dayRow => {
+                        const isDayClosed = dayRow.is_closed || dayRow.weekday === '月';
                         const s = dayRow.slots[sIdx];
+
+                        if (isDayClosed) {
+                            return `
+                                <td class="slot-closed text-center p-2">
+                                    <span class="text-xs font-semibold">休館日</span>
+                                </td>
+                            `;
+                        }
+
                         if (s && s.available) {
                             return `
                                 <td class="slot-available text-center p-2">
                                     <span class="block text-xs font-bold">◯ 空席あり</span>
-                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2 mt-1 shadow">
+                                    <span class="block text-[10px] text-lime-900">${s.remain_text || '予約可'}</span>
+                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2.5 mt-1 shadow">
                                         予約
                                     </button>
                                 </td>
                             `;
                         } else {
                             return `
-                                <td class="slot-occupied text-center p-2">
+                                <td class="slot-full text-center p-2">
                                     <span class="text-xs text-slate-500 font-medium">✕ 満席</span>
+                                    <button type="button" onclick="createInstantSnipeForDate('${s ? s.date : ''}', '${area}', '${corner}')" class="jtc-btn jtc-btn-default text-[10px] py-0.5 px-1.5 mt-1">
+                                        待機
+                                    </button>
                                 </td>
                             `;
                         }
@@ -1209,13 +1308,14 @@
         }
 
         async function loadLiveVacancies() {
-            const date = document.getElementById('snipe-date').value;
+            const area = document.getElementById('snipe-area').value;
             const corner = document.getElementById('snipe-corner').value;
+            const date = document.getElementById('snipe-date').value;
             const container = document.getElementById('live-vacancies-list');
 
             container.innerHTML = `<div class="p-4 text-center text-slate-500 text-xs col-span-full">空席状況をスキャン中...</div>`;
             try {
-                const res = await fetch(`backend/api.php?action=public_vacancies&date=${date}&corner=${corner}`);
+                const res = await fetch(`backend/api.php?action=public_vacancies&area=${area}&date=${date}&corner=${corner}`);
                 const data = await res.json();
 
                 if (!data.success || !data.data.slots || data.data.slots.length === 0) {
@@ -1226,8 +1326,8 @@
                 container.innerHTML = data.data.slots.map(s => `
                     <div class="slot-available p-2.5 rounded flex items-center justify-between shadow-sm">
                         <div>
-                            <strong class="text-xs font-mono block text-emerald-950">${s.label}</strong>
-                            <span class="text-[10px] text-slate-700 font-mono">枠: ${s.slot_id}</span>
+                            <strong class="text-xs font-mono block text-emerald-950">${s.label || s.time}</strong>
+                            <span class="text-[10px] text-slate-700 font-mono">${s.status_text || s.remain_text}</span>
                         </div>
                         <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-xs py-1 px-2.5">
                             即時取得
@@ -1240,8 +1340,9 @@
         }
 
         async function createInstantSnipeTask() {
-            const date = document.getElementById('snipe-date').value;
+            const area = document.getElementById('snipe-area').value;
             const corner = document.getElementById('snipe-corner').value;
+            const date = document.getElementById('snipe-date').value;
             const time = document.getElementById('snipe-time').value;
 
             showToast('即時スナイパー・監視タスクを登録中...', true);
@@ -1250,8 +1351,9 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     type: 'instant_snipe',
-                    target_date: date,
+                    area_code: area,
                     corner_code: corner,
+                    target_date: date,
                     target_time_slot: time,
                     run_now: true,
                     max_retries: 50
@@ -1266,13 +1368,17 @@
             }
         }
 
-        async function createInstantSnipeForDate(date, corner) {
-            document.getElementById('snipe-date').value = date;
+        async function createInstantSnipeForDate(date, area, corner) {
+            document.getElementById('snipe-area').value = area;
+            onAreaSelectChange('snipe-area', 'snipe-corner');
             document.getElementById('snipe-corner').value = corner;
+            document.getElementById('snipe-date').value = date;
             createInstantSnipeTask();
         }
 
         async function createAbsoluteSniperTask() {
+            const area = document.getElementById('target-area').value;
+            const corner = document.getElementById('target-corner').value;
             const date = document.getElementById('target-date').value;
             const time = document.getElementById('target-time').value;
             const launch = document.getElementById('target-launch-time').value;
@@ -1283,8 +1389,9 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     type: 'absolute_sniper',
+                    area_code: area,
+                    corner_code: corner,
                     target_date: date,
-                    corner_code: '62000',
                     target_time_slot: time,
                     execute_at: launch || null,
                     max_retries: 100

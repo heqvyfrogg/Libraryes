@@ -14,21 +14,43 @@ class KobeLibraryClient {
     private ?string $password = null;
 
     public const AREAS = [
-        '10000' => '名谷図書館',
-        '20000' => '西図書館',
+        '60000' => '垂水図書館',
         '30000' => '中央図書館',
         '40000' => '東灘図書館',
         '50000' => '北神図書館',
-        '60000' => '垂水図書館'
+        '10000' => '名谷図書館',
+        '20000' => '西図書館'
     ];
 
     public const CORNERS = [
         '60000' => [
-            '61000' => '2F 南カウンター席',
             '62000' => '2F キャレル席',
+            '61000' => '2F 南カウンター席',
             '63000' => '2F 西カウンター席',
             '64000' => '3F 学習室',
             '66000' => 'セミナー室'
+        ],
+        '30000' => [
+            '31000' => '2号館2F 閲覧室1',
+            '32000' => '2号館3F 閲覧室2',
+            '33000' => '1号館2F 閲覧室3',
+            '34000' => '1号館3F 閲覧室4'
+        ],
+        '40000' => [
+            '41000' => '一般閲覧席',
+            '42000' => 'キャレル席'
+        ],
+        '50000' => [
+            '51000' => '一般閲覧席',
+            '52000' => 'キャレル席'
+        ],
+        '10000' => [
+            '11000' => '一般閲覧席',
+            '12000' => 'キャレル席'
+        ],
+        '20000' => [
+            '21000' => '一般閲覧席',
+            '22000' => 'キャレル席'
         ]
     ];
 
@@ -135,7 +157,6 @@ class KobeLibraryClient {
             return true;
         }
 
-        // Check if there is an error message in HTML
         if (preg_match('/<div[^>]*class="[^"]*text-danger[^"]*"[^>]*>(.*?)<\/div>/is', $res['body'], $m)) {
             $msg = trim(strip_tags($m[1]));
             if ($msg) {
@@ -161,84 +182,148 @@ class KobeLibraryClient {
         $url = self::BASE_URL . '/areainfo/usagesWeb?' . http_build_query($query);
         $res = $this->request('GET', $url);
 
-        return $this->parsePublicVacanciesHtml($res['body'], $date, $areaCode);
+        return $this->parsePublicVacanciesHtml($res['body'], $date, $areaCode, $cornerCode);
     }
 
-    private function parsePublicVacanciesHtml(string $html, string $date, string $areaCode): array {
+    private function parsePublicVacanciesHtml(string $html, string $date, string $areaCode, ?string $cornerCode = null): array {
         $results = [
             'date' => $date,
             'area_code' => $areaCode,
             'area_name' => self::AREAS[$areaCode] ?? '垂水図書館',
+            'corner_code' => $cornerCode ?: '62000',
             'slots' => [],
             'matrix' => []
         ];
 
+        // Standard library slot definitions
         $standardSlots = [
             '0' => ['time' => '10:10 - 12:10', 'name' => '第1枠 (午前)'],
             '1' => ['time' => '12:15 - 14:15', 'name' => '第2枠 (昼)'],
             '2' => ['time' => '14:20 - 16:20', 'name' => '第3枠 (午後)'],
             '3' => ['time' => '16:25 - 18:25', 'name' => '第4枠 (夕方)'],
-            '4' => ['time' => '18:30 - 20:30', 'name' => '第5枠 (夜間)'],
+            '4' => ['time' => '18:30 - 19:50', 'name' => '第5枠 (夜間)'],
         ];
 
-        // Extract active buttons
-        $activeMap = [];
-        preg_match_all('/<button[^>]*onclick="location\.href=\'([^\']+)\'"[^>]*>(.*?)<\/button>/is', $html, $matches, PREG_SET_ORDER);
-        foreach ($matches as $m) {
-            $href = html_entity_decode($m[1]);
-            $btnText = trim(strip_tags($m[2]));
-            if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $href, $pm)) {
-                $pDate = $pm[1] ?: $pm[3];
-                $pId = $pm[2] ?: $pm[4];
-                $key = "{$pDate}_{$pId}";
-                $time = '';
-                if (preg_match('/(\d{1,2}:\d{2})/', $btnText, $tm)) {
-                    $time = $tm[1];
+        // Parse day columns from table
+        // Find Table 1
+        $parsedDays = [];
+        if (preg_match('/<table\b[^>]*>(.*?)<\/table>/is', $html, $tm)) {
+            $tableHtml = $tm[1];
+            // Split rows
+            if (preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $tableHtml, $rows)) {
+                $headerRow = $rows[1][0] ?? '';
+                $dataRow = $rows[1][1] ?? '';
+
+                // Extract headers to map columns to dates
+                preg_match_all('/<th\b[^>]*>(.*?)<\/th>/is', $headerRow, $thMatches);
+                $dateHeaders = [];
+                foreach ($thMatches[1] as $thHtml) {
+                    if (preg_match('/(\d{2}\/\d{2})[^\(]*\(\s*<span[^>]*>\s*([^\s<]+)\s*<\/span>\s*\)/u', $thHtml, $dm)) {
+                        $dateHeaders[] = [
+                            'md' => $dm[1],
+                            'weekday' => trim($dm[2])
+                        ];
+                    }
                 }
-                $activeMap[$key] = [
-                    'date' => $pDate,
-                    'slot_id' => $pId,
-                    'time' => $time ?: ($standardSlots[$pId]['time'] ?? $btnText),
-                    'label' => $btnText,
-                    'available' => true,
-                    'url' => $href
-                ];
-                $results['slots'][] = $activeMap[$key];
-            }
-        }
 
-        // Build 7-day complete matrix (showing both available=lime and full=gray)
-        $targetTs = strtotime($date);
-        for ($day = 0; $day < 7; $day++) {
-            $curTs = strtotime("+{$day} days", $targetTs);
-            $curDateStr = date('Ymd', $curTs);
-            $curDateFmt = date('Y/m/d', $curTs);
-            $weekdayStr = ['日', '月', '火', '水', '木', '金', '土'][date('w', $curTs)];
+                // Extract data cells
+                preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $dataRow, $tdMatches);
+                // The data cells match the date headers (offset by 1 or 2 for axis)
+                $activeCells = array_slice($tdMatches[1], 1, count($dateHeaders));
 
-            $dayRow = [
-                'date' => $curDateStr,
-                'date_formatted' => $curDateFmt,
-                'weekday' => $weekdayStr,
-                'slots' => []
-            ];
+                foreach ($dateHeaders as $idx => $dInfo) {
+                    $cellHtml = $activeCells[$idx] ?? '';
+                    $isClosed = (strpos($cellHtml, 'not_reservable_day_button') !== false || 
+                                 strpos($cellHtml, '受付対象外') !== false || 
+                                 $dInfo['weekday'] === '月');
 
-            foreach ($standardSlots as $slotId => $slotDef) {
-                $key = "{$curDateStr}_{$slotId}";
-                if (isset($activeMap[$key])) {
-                    $dayRow['slots'][] = $activeMap[$key];
-                } else {
-                    $dayRow['slots'][] = [
-                        'date' => $curDateStr,
-                        'slot_id' => (string)$slotId,
-                        'time' => explode(' - ', $slotDef['time'])[0],
-                        'time_range' => $slotDef['time'],
-                        'label' => $slotDef['name'],
-                        'available' => false,
-                        'url' => null
+                    $daySlots = [];
+
+                    // Parse buttons in this cell
+                    preg_match_all('/<button\b([^>]*)>(.*?)<\/button>/is', $cellHtml, $btnMatches, PREG_SET_ORDER);
+
+                    foreach ($btnMatches as $bm) {
+                        $attr = $bm[1];
+                        $inner = $bm[2];
+
+                        if (strpos($attr, 'invisible') !== false || strpos($attr, 'not_reservable_day') !== false) {
+                            continue;
+                        }
+
+                        // Extract date & slot id from onclick
+                        if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $attr, $pm)) {
+                            $slotDate = (isset($pm[1]) && $pm[1] !== '') ? $pm[1] : ($pm[3] ?? '');
+                            $slotId = (isset($pm[2]) && $pm[2] !== '') ? $pm[2] : ($pm[4] ?? '0');
+
+                            $isFull = (strpos($attr, 'full') !== false);
+                            $isLimited = (strpos($attr, 'limited') !== false);
+                            $isReservable = (strpos($attr, 'reservable') !== false);
+
+                            $isAvailable = (!$isClosed && ($isLimited || $isReservable));
+                            if (preg_match('/残り\s*(\d+)席/u', $inner, $rm)) {
+                                $remainText = "残り {$rm[1]}席";
+                            } elseif ($isLimited) {
+                                $remainText = "残りわずか";
+                            } elseif ($isReservable) {
+                                $remainText = "空席あり";
+                            } elseif ($isFull) {
+                                $remainText = "満席";
+                            }
+
+                            // Extract time range
+                            $timeStr = $standardSlots[$slotId]['time'] ?? '10:10 - 12:10';
+                            if (preg_match('/(\d{1,2}:\d{2})\s*.*?(\d{1,2}:\d{2})/s', $inner, $tm)) {
+                                $timeStr = "{$tm[1]} - {$tm[2]}";
+                            }
+
+                            $slotObj = [
+                                'date' => $slotDate,
+                                'slot_id' => (string)$slotId,
+                                'time' => explode(' - ', $timeStr)[0],
+                                'time_range' => $timeStr,
+                                'label' => $standardSlots[$slotId]['name'] ?? "第" . ($slotId + 1) . "枠",
+                                'remain_text' => $remainText,
+                                'available' => $isAvailable,
+                                'is_full' => $isFull,
+                                'is_closed' => $isClosed,
+                                'status_text' => $isClosed ? '休館日' : ($isAvailable ? ($remainText ?: '◯ 空席あり') : '✕ 満席')
+                            ];
+
+                            $daySlots[] = $slotObj;
+                            if ($isAvailable) {
+                                $results['slots'][] = $slotObj;
+                            }
+                        }
+                    }
+
+                    // If cell was completely closed or no buttons generated
+                    if (empty($daySlots)) {
+                        $targetYear = date('Y', strtotime($date));
+                        $fullDateStr = $targetYear . str_replace('/', '', $dInfo['md']);
+                        foreach ($standardSlots as $sid => $sdef) {
+                            $daySlots[] = [
+                                'date' => $fullDateStr,
+                                'slot_id' => (string)$sid,
+                                'time' => explode(' - ', $sdef['time'])[0],
+                                'time_range' => $sdef['time'],
+                                'label' => $sdef['name'],
+                                'remain_text' => '',
+                                'available' => false,
+                                'is_full' => false,
+                                'is_closed' => true,
+                                'status_text' => $dInfo['weekday'] === '月' ? '休館日' : '受付対象外'
+                            ];
+                        }
+                    }
+
+                    $results['matrix'][] = [
+                        'md' => $dInfo['md'],
+                        'weekday' => $dInfo['weekday'],
+                        'is_closed' => $isClosed,
+                        'slots' => $daySlots
                     ];
                 }
             }
-            $results['matrix'][] = $dayRow;
         }
 
         return $results;
@@ -264,35 +349,47 @@ class KobeLibraryClient {
             'slots' => []
         ];
 
-        // Extract available buttons with confirmation URLs
-        // Pattern: onclick="location.href='/eboothweb_kobe/reservation/confirm?date=20260902&amp;id=0'"
-        preg_match_all('/<button[^>]*onclick="location\.href=\'([^\']*\/reservation\/confirm\?[^\']+)\'"[^>]*>(.*?)<\/button>/is', $html, $matches, PREG_SET_ORDER);
+        // Extract available buttons
+        preg_match_all('/<button\b([^>]*)>(.*?)<\/button>/is', $html, $matches, PREG_SET_ORDER);
         
         foreach ($matches as $m) {
-            $href = html_entity_decode($m[1]);
+            $attr = $m[1];
             $rawText = trim(strip_tags($m[2]));
             
-            if (preg_match('/date=(\d{8})&id=(\d+)/i', $href, $pm)) {
-                $slotDate = $pm[1];
-                $slotId = $pm[2];
-                
-                // Extract time if text has format e.g. "10:10"
-                $time = '';
-                if (preg_match('/(\d{1,2}:\d{2})/', $rawText, $tm)) {
-                    $time = $tm[1];
-                }
+            if (strpos($attr, 'reservation/confirm') !== false) {
+                if (preg_match('/date=(\d{8})&amp;id=(\d+)|date=(\d{8})&id=(\d+)/i', $attr, $pm)) {
+                    $slotDate = $pm[1] ?: $pm[3];
+                    $slotId = $pm[2] ?: $pm[4];
 
-                $matrix['slots'][] = [
-                    'date' => $slotDate,
-                    'slot_id' => $slotId,
-                    'time' => $time,
-                    'raw_label' => $rawText,
-                    'confirm_url' => $href,
-                    'available' => true
-                ];
+                    $isFull = (strpos($attr, 'full') !== false);
+                    $isLimited = (strpos($attr, 'limited') !== false);
+                    $isReservable = (strpos($attr, 'reservable') !== false);
+                    $isAvailable = ($isLimited || $isReservable) && !$isFull;
 
-                if (!in_array($slotDate, $matrix['dates'])) {
-                    $matrix['dates'][] = $slotDate;
+                    $time = '';
+                    if (preg_match('/(\d{1,2}:\d{2})/', $rawText, $tm)) {
+                        $time = $tm[1];
+                    }
+
+                    $remainText = '';
+                    if (preg_match('/残り\s*(\d+)席/u', $rawText, $rm)) {
+                        $remainText = "残り {$rm[1]}席";
+                    }
+
+                    $matrix['slots'][] = [
+                        'date' => $slotDate,
+                        'slot_id' => $slotId,
+                        'time' => $time,
+                        'raw_label' => $rawText,
+                        'remain_text' => $remainText,
+                        'available' => $isAvailable,
+                        'is_full' => $isFull,
+                        'status_text' => $isAvailable ? ($remainText ?: '◯ 空席あり') : '✕ 満席'
+                    ];
+
+                    if (!in_array($slotDate, $matrix['dates'])) {
+                        $matrix['dates'][] = $slotDate;
+                    }
                 }
             }
         }
@@ -304,11 +401,11 @@ class KobeLibraryClient {
      * Complete reservation workflow for a given slot
      */
     public function reserveSlot(string $date, string $slotId, ?string $cornerCode = '62000'): array {
-        // Step 1: Confirm rule acceptance
         if (!$this->csrfToken) {
             $this->fetchInitialCsrf();
         }
 
+        // Rule confirm
         $this->request('POST', self::BASE_URL . '/rule/ruleconfirm', [
             'data' => [
                 '_csrfToken' => $this->csrfToken,
@@ -316,11 +413,10 @@ class KobeLibraryClient {
             ]
         ]);
 
-        // Step 2: Access confirmation page to obtain exact base64 payload
+        // Confirmation page
         $confirmUrl = self::BASE_URL . '/reservation/confirm?date=' . urlencode($date) . '&id=' . urlencode($slotId);
         $resConfirm = $this->request('GET', $confirmUrl);
 
-        // Extract hidden reservation field
         $reservationPayload = null;
         if (preg_match('/<input[^>]*name="reservation"[^>]*value="([^"]+)"/i', $resConfirm['body'], $m)) {
             $reservationPayload = $m[1];
@@ -329,18 +425,16 @@ class KobeLibraryClient {
         }
 
         if (!$reservationPayload) {
-            // Check if slot was already taken
             if (strpos($resConfirm['body'], '満席') !== false || strpos($resConfirm['body'], '予約できません') !== false) {
                 throw new Exception("Slot {$date} ID:{$slotId} is no longer available (Already booked).");
             }
             throw new Exception("Failed to retrieve reservation token from confirm page.");
         }
 
-        // Decode payload for detail inspection
         $decodedJson = base64_decode($reservationPayload);
         $slotDetails = json_decode($decodedJson, true) ?: [];
 
-        // Step 3: POST reservation result
+        // Result post
         $resResult = $this->request('POST', self::BASE_URL . '/reservation/result', [
             'data' => [
                 '_csrfToken' => $this->csrfToken,
@@ -353,7 +447,6 @@ class KobeLibraryClient {
                       strpos($resResult['body'], '予約番号') !== false ||
                       $resResult['code'] === 200);
 
-        // Extract reservation number if present
         $reservationNumber = null;
         if (preg_match('/予約番号[^\d]*(\d+)/u', $resResult['body'], $rnm)) {
             $reservationNumber = $rnm[1];
@@ -368,16 +461,11 @@ class KobeLibraryClient {
         ];
     }
 
-    /**
-     * Get active user reservations
-     */
     public function getActiveReservations(): array {
         $res = $this->request('GET', self::BASE_URL . '/choice/index');
         $html = $res['body'];
         $reservations = [];
 
-        // Parse reservation cards / table rows
-        // Look for items with deleteconfirm / rule links
         if (preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $html, $rows)) {
             foreach ($rows[1] as $row) {
                 if (strpos($row, 'deleteconfirm') !== false || strpos($row, '取消') !== false) {
@@ -399,14 +487,8 @@ class KobeLibraryClient {
         return $reservations;
     }
 
-    /**
-     * Cancel an active reservation
-     */
     public function cancelReservation(string $slotId = '0'): bool {
-        // Step 1: Delete confirmation page
         $this->request('GET', self::BASE_URL . '/choice/deleteconfirm?id=' . urlencode($slotId));
-
-        // Step 2: Perform delete
         $res = $this->request('GET', self::BASE_URL . '/choice/delete');
         return ($res['code'] === 200 && (strpos($res['body'], '取消') !== false || strpos($res['body'], '完了') !== false));
     }
