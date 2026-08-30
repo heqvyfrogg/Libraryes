@@ -22,35 +22,36 @@ class KobeLibraryClient {
         '20000' => '西図書館'
     ];
 
+    // Disallowed multi-person/group corner codes
+    public const FORBIDDEN_GROUP_CORNERS = ['63000', '64000', '66000'];
+
+    // Allowed individual-only seat corners
     public const CORNERS = [
         '60000' => [
-            '62000' => '2F キャレル席',
-            '61000' => '2F 南カウンター席',
-            '63000' => '2F 西カウンター席',
-            '64000' => '3F 学習室',
-            '66000' => 'セミナー室'
+            '62000' => '2F キャレル席 (個人席)',
+            '61000' => '2F 南カウンター席 (個人席)'
         ],
         '30000' => [
-            '31000' => '2号館2F 閲覧室1',
-            '32000' => '2号館3F 閲覧室2',
-            '33000' => '1号館2F 閲覧室3',
-            '34000' => '1号館3F 閲覧室4'
+            '31000' => '2号館2F 閲覧席1 (個人席)',
+            '32000' => '2号館3F 閲覧席2 (個人席)',
+            '33000' => '1号館2F 閲覧席3 (個人席)',
+            '34000' => '1号館3F 閲覧席4 (個人席)'
         ],
         '40000' => [
-            '41000' => '一般閲覧席',
-            '42000' => 'キャレル席'
+            '41000' => '一般閲覧席 (個人席)',
+            '42000' => 'キャレル席 (個人席)'
         ],
         '50000' => [
-            '51000' => '一般閲覧席',
-            '52000' => 'キャレル席'
+            '51000' => '一般閲覧席 (個人席)',
+            '52000' => 'キャレル席 (個人席)'
         ],
         '10000' => [
-            '11000' => '一般閲覧席',
-            '12000' => 'キャレル席'
+            '11000' => '一般閲覧席 (個人席)',
+            '12000' => 'キャレル席 (個人席)'
         ],
         '20000' => [
-            '21000' => '一般閲覧席',
-            '22000' => 'キャレル席'
+            '21000' => '一般閲覧席 (個人席)',
+            '22000' => 'キャレル席 (個人席)'
         ]
     ];
 
@@ -396,17 +397,18 @@ class KobeLibraryClient {
 
         return $matrix;
     }
-
     /**
-     * Complete reservation workflow for a given slot with full session handshake and synthetic token fallback
+     * Complete reservation workflow for an individual seat slot with session handshake and group-seat block guard
      */
     public function reserveSlot(string $date, string $slotId, ?string $cornerCode = '62000', ?string $areaCode = '60000'): array {
+        // Block multi-person/group corners
+        if (in_array((string)$cornerCode, self::FORBIDDEN_GROUP_CORNERS, true)) {
+            throw new Exception("指定された座席コーナー(コード: {$cornerCode})は複数人・グループ専用席のため予約対象外です。個人席を選択してください。");
+        }
+
         if (!$this->csrfToken) {
             $this->fetchInitialCsrf();
         }
-
-        $cleanDate = str_replace(['-', '/'], '', $date);
-
         // Step 1: Rule page and Rule confirmation
         $this->request('GET', self::BASE_URL . '/rule');
         $this->request('POST', self::BASE_URL . '/rule/ruleconfirm', [

@@ -208,11 +208,11 @@
         </div>
     </header>
 
-    <!-- Continuous Sniper Monitoring Banner (Displayed when sniper is active) -->
+    <!-- Continuous Sniper Monitoring Banner -->
     <div id="sniper-active-strip" class="hidden bg-amber-500 text-slate-950 font-bold px-4 py-2 text-xs border-b border-amber-600 flex items-center justify-between shadow">
         <div class="flex items-center space-x-2">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
-            <span>【⚡ 永続スナイパー待機稼働中】 空席（キャンセル発生）をミリ秒常時監視中... <span id="sniper-target-info" class="font-mono text-blue-950 underline"></span></span>
+            <span>【⚡ 永続スナイパー待機稼働中】 空席(キャンセル発生)をミリ秒常時監視中... <span id="sniper-target-info" class="font-mono text-blue-950 underline"></span></span>
         </div>
         <button type="button" onclick="stopContinuousSniper()" class="bg-slate-900 text-white px-3 py-1 rounded text-xs hover:bg-slate-800">
             ⏹ 監視待機を停止
@@ -228,7 +228,7 @@
                 <span class="text-blue-900" id="current-breadcrumb">AI最適予約・自動支援コンソール</span>
             </div>
             <div class="flex items-center space-x-3 text-[11px]">
-                <span>デフォルト確保席数: <strong class="text-blue-950 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-300">2席確保モード</strong></span>
+                <span>対象座席: <strong class="text-emerald-700 font-bold">個人専用席のみ (複数人専用席は除外済)</strong></span>
                 <span>定休日: <strong class="text-red-700">毎週月曜休館</strong></span>
                 <span>DB: <strong class="text-emerald-700">SQLite3</strong></span>
             </div>
@@ -276,7 +276,7 @@
             <div class="jtc-panel">
                 <div class="section-bar">
                     <span>▼ AI 座席予約パラメータ設定 & 最適スロット自動診断</span>
-                    <span class="text-xs font-normal text-blue-100">※利用目的に合わせてAIが覚醒度・静寂度・混雑傾向を自動スコアリングします</span>
+                    <span class="text-xs font-normal text-blue-100">※個人席（キャレル席・閲覧席・南カウンター席等）を対象に最適判定します</span>
                 </div>
                 <div class="p-4 space-y-4">
                     <table class="jtc-form-table">
@@ -322,26 +322,13 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別（コーナー）</th>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別 (個人席のみ)</th>
                                 <td>
                                     <select id="ai-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
-                                        <option value="62000" selected>2F キャレル席</option>
-                                        <option value="61000">2F 南カウンター席</option>
-                                        <option value="63000">2F 西カウンター席</option>
-                                        <option value="64000">3F 学習室</option>
-                                        <option value="66000">セミナー室</option>
+                                        <option value="62000" selected>2F キャレル席 (個人席)</option>
+                                        <option value="61000">2F 南カウンター席 (個人席)</option>
                                     </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>確保希望席数</th>
-                                <td>
-                                    <select id="ai-seat-count" class="jtc-input w-48 font-bold text-blue-950 bg-blue-50 border-blue-400">
-                                        <option value="2" selected>2席 (推奨/デフォルト)</option>
-                                        <option value="1">1席のみ</option>
-                                        <option value="3">3席 (複数カード連動)</option>
-                                    </select>
-                                    <span class="text-xs text-slate-500 ml-2">※複数アカウント登録時は別カードで2席を同時確保します</span>
+                                    <span class="text-xs text-slate-500 ml-2">※グループ席・学習室・セミナー室等の複数人専用席は除外済</span>
                                 </td>
                             </tr>
                             <tr>
@@ -449,13 +436,10 @@
                                 <option value="20000">西図書館</option>
                             </select>
 
-                            <span class="font-bold text-slate-700 ml-2">座席種別:</span>
+                            <span class="font-bold text-slate-700 ml-2">座席種別 (個人席):</span>
                             <select id="matrix-corner" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs font-bold text-blue-950">
-                                <option value="62000" selected>2F キャレル席</option>
-                                <option value="61000">2F 南カウンター席</option>
-                                <option value="63000">2F 西カウンター席</option>
-                                <option value="64000">3F 学習室</option>
-                                <option value="66000">セミナー室</option>
+                                <option value="62000" selected>2F キャレル席 (個人席)</option>
+                                <option value="61000">2F 南カウンター席 (個人席)</option>
                             </select>
 
                             <span class="font-bold text-slate-700 ml-2">基準日:</span>
@@ -501,7 +485,7 @@
                 <div class="p-4 space-y-4">
                     <div class="bg-amber-50 border border-amber-300 p-3 rounded text-xs text-amber-900">
                         <strong>【永続スナイプ待機機能概要】</strong><br>
-                        現在空いている枠（黄緑色）を直ちに2席予約します。満席（灰色）の場合は、「ずっと待機」ボタンを押すとバックグラウンドで<strong>キャンセルが出るまで常時高速スキャンを永続継続</strong>し、空いた瞬間にミリ秒で自動予約を奪取します。
+                        現在空いている枠（黄緑色）を直ちに予約確保します。満席（灰色）の場合は、「空くのをずっと待機」ボタンを押すとバックグラウンドで<strong>キャンセルが出るまで常時高速スキャンを永続継続</strong>し、空いた瞬間にミリ秒で自動予約を奪取します。
                     </div>
 
                     <table class="jtc-form-table">
@@ -520,14 +504,11 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>座席コーナー</th>
+                                <th>座席コーナー (個人席)</th>
                                 <td>
                                     <select id="snipe-corner" onchange="loadLiveVacancies()" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
-                                        <option value="62000" selected>2F キャレル席</option>
-                                        <option value="61000">2F 南カウンター席</option>
-                                        <option value="63000">2F 西カウンター席</option>
-                                        <option value="64000">3F 学習室</option>
-                                        <option value="66000">セミナー室</option>
+                                        <option value="62000" selected>2F キャレル席 (個人席)</option>
+                                        <option value="61000">2F 南カウンター席 (個人席)</option>
                                     </select>
                                 </td>
                             </tr>
@@ -587,7 +568,7 @@
                 <div class="p-4 space-y-4">
                     <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【ピンポイント確保仕様】</strong><br>
-                        1週間前の予約解禁時刻（朝9:00等）や激戦時間帯をピンポイント指定します。事前キャッシュしたCSRFトークンを用い、受付開始と同時に200ms周期のミリ秒連続リクエストを投入して枠を確実に2席奪取します。
+                        1週間前の予約解禁時刻（朝9:00等）や激戦時間帯をピンポイント指定します。事前キャッシュしたCSRFトークンを用い、受付開始と同時に200ms周期のミリ秒連続リクエストを投入して枠を確実に奪取します。
                     </div>
 
                     <table class="jtc-form-table">
@@ -606,14 +587,11 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>座席コーナー</th>
+                                <th>座席コーナー (個人席)</th>
                                 <td>
                                     <select id="target-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
-                                        <option value="62000" selected>2F キャレル席</option>
-                                        <option value="61000">2F 南カウンター席</option>
-                                        <option value="63000">2F 西カウンター席</option>
-                                        <option value="64000">3F 学習室</option>
-                                        <option value="66000">セミナー室</option>
+                                        <option value="62000" selected>2F キャレル席 (個人席)</option>
+                                        <option value="61000">2F 南カウンター席 (個人席)</option>
                                     </select>
                                 </td>
                             </tr>
@@ -714,7 +692,7 @@
                 <div class="p-4 space-y-4">
                     <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【認証情報について】</strong><br>
-                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。2席以上を同時に確保するために、複数のカード番号を登録しておくことも可能です。
+                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。
                     </div>
 
                     <form onsubmit="handleAccountSave(event)" class="space-y-4">
@@ -737,7 +715,7 @@
                                 <tr>
                                     <th><span class="bg-slate-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">任意</span>アカウント識別名</th>
                                     <td>
-                                        <input type="text" id="acc-name" placeholder="例: 個人用カード1" class="jtc-input w-full sm:w-80">
+                                        <input type="text" id="acc-name" placeholder="例: 個人用カード" class="jtc-input w-full sm:w-80">
                                     </td>
                                 </tr>
                             </tbody>
@@ -792,33 +770,30 @@
     <script>
         const LIBRARY_CORNERS = {
             '60000': [
-                {id: '62000', name: '2F キャレル席'},
-                {id: '61000', name: '2F 南カウンター席'},
-                {id: '63000', name: '2F 西カウンター席'},
-                {id: '64000', name: '3F 学習室'},
-                {id: '66000', name: 'セミナー室'}
+                {id: '62000', name: '2F キャレル席 (個人席)'},
+                {id: '61000', name: '2F 南カウンター席 (個人席)'}
             ],
             '30000': [
-                {id: '31000', name: '2号館2F 閲覧室1'},
-                {id: '32000', name: '2号館3F 閲覧室2'},
-                {id: '33000', name: '1号館2F 閲覧室3'},
-                {id: '34000', name: '1号館3F 閲覧室4'}
+                {id: '31000', name: '2号館2F 閲覧席1 (個人席)'},
+                {id: '32000', name: '2号館3F 閲覧席2 (個人席)'},
+                {id: '33000', name: '1号館2F 閲覧席3 (個人席)'},
+                {id: '34000', name: '1号館3F 閲覧席4 (個人席)'}
             ],
             '40000': [
-                {id: '41000', name: '一般閲覧席'},
-                {id: '42000', name: 'キャレル席'}
+                {id: '41000', name: '一般閲覧席 (個人席)'},
+                {id: '42000', name: 'キャレル席 (個人席)'}
             ],
             '50000': [
-                {id: '51000', name: '一般閲覧席'},
-                {id: '52000', name: 'キャレル席'}
+                {id: '51000', name: '一般閲覧席 (個人席)'},
+                {id: '52000', name: 'キャレル席 (個人席)'}
             ],
             '10000': [
-                {id: '11000', name: '一般閲覧席'},
-                {id: '12000', name: 'キャレル席'}
+                {id: '11000', name: '一般閲覧席 (個人席)'},
+                {id: '12000', name: 'キャレル席 (個人席)'}
             ],
             '20000': [
-                {id: '21000', name: '一般閲覧席'},
-                {id: '22000', name: 'キャレル席'}
+                {id: '21000', name: '一般閲覧席 (個人席)'},
+                {id: '22000', name: 'キャレル席 (個人席)'}
             ]
         };
 
@@ -1206,7 +1181,7 @@
                             </div>
                             ${isAvail ? `
                                 <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs font-bold">
-                                    ✔ 2席を今すぐ予約
+                                    ✔ この個人席を今すぐ予約
                                 </button>
                             ` : `
                                 <button type="button" onclick="startContinuousSniperForParams('${slot.date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs py-1.5 px-3">
@@ -1278,7 +1253,7 @@
                                     <span class="block text-xs font-bold">◯ 空席あり</span>
                                     <span class="block text-[10px] text-lime-900 font-bold">${s.remain_text || '予約可'}</span>
                                     <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2.5 mt-1 shadow font-bold">
-                                        2席予約
+                                        予約
                                     </button>
                                 </td>
                             `;
@@ -1311,8 +1286,7 @@
         }
 
         async function quickReserve(date, slotId, corner, area = '60000') {
-            const seatCount = document.getElementById('ai-seat-count') ? document.getElementById('ai-seat-count').value : 2;
-            showToast(`図書館予約システムへ ${seatCount}席の予約リクエストを投入中...`, true);
+            showToast(`図書館予約システムへ予約リクエストを投入中...`, true);
 
             try {
                 const res = await fetch('backend/api.php?action=quick_reserve', {
@@ -1323,7 +1297,7 @@
                         slot_id: slotId,
                         corner_code: corner,
                         area_code: area,
-                        seat_count: seatCount
+                        seat_count: 1
                     })
                 });
                 const data = await res.json();
@@ -1361,7 +1335,7 @@
                             <span class="text-[11px] text-emerald-900 font-bold block">${s.remain_text || s.status_text}</span>
                         </div>
                         <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-xs py-1 px-2.5 font-bold">
-                            2席即時取得
+                            即時取得
                         </button>
                     </div>
                 `).join('');
