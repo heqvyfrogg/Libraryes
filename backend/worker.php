@@ -122,8 +122,7 @@ class Worker {
         DB::log("AI selected slot: {$bestSlot['date']} {$bestSlot['time']} (Score: {$bestSlot['ai_score']} - {$bestSlot['recommendation_tag']})", 'info', $taskId);
 
         // Execute reservation
-        $res = $client->reserveSlot($bestSlot['date'], $bestSlot['slot_id'], $cornerCode);
-
+        $res = $client->reserveSlot($bestSlot['date'], $bestSlot['slot_id'], $cornerCode, $task['area_code'] ?? '60000');
         if ($res['success']) {
             $successMsg = "AI Reserved: {$bestSlot['date']} {$bestSlot['time']} (No. " . ($res['reservation_number'] ?? 'OK') . ")";
             self::updateTaskStatus($taskId, 'success', $successMsg, (int)$task['retry_count'], json_encode([
@@ -168,8 +167,7 @@ class Worker {
 
         DB::log("Sniper triggered! Grabbing slot {$chosenSlot['date']} ID:{$chosenSlot['slot_id']} ({$chosenSlot['time']})", 'info', $taskId);
 
-        $res = $client->reserveSlot($chosenSlot['date'], $chosenSlot['slot_id'], $cornerCode);
-
+        $res = $client->reserveSlot($chosenSlot['date'], $chosenSlot['slot_id'], $cornerCode, $task['area_code'] ?? '60000');
         if ($res['success']) {
             $successMsg = "Sniped seat successfully: {$chosenSlot['date']} {$chosenSlot['time']} (No. " . ($res['reservation_number'] ?? 'OK') . ")";
             self::updateTaskStatus($taskId, 'success', $successMsg, (int)$task['retry_count'], json_encode($res, JSON_UNESCAPED_UNICODE));
@@ -218,7 +216,7 @@ class Worker {
 
             if ($targetSlot) {
                 DB::log("Target slot detected! Attempting instant lock (Attempt {$attempt})...", 'info', $taskId);
-                $res = $client->reserveSlot($targetSlot['date'], $targetSlot['slot_id'], $cornerCode);
+                $res = $client->reserveSlot($targetSlot['date'], $targetSlot['slot_id'], $cornerCode, $task['area_code'] ?? '60000');
                 if ($res['success']) {
                     $msg = "ABSOLUTE LOCK SUCCESS: {$targetSlot['date']} {$targetSlot['time']} (No. " . ($res['reservation_number'] ?? 'OK') . ")";
                     self::updateTaskStatus($taskId, 'success', $msg, $attempt, json_encode($res, JSON_UNESCAPED_UNICODE));

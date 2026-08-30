@@ -188,7 +188,7 @@
                 </div>
                 <div>
                     <div class="text-[11px] text-blue-200 tracking-wider font-semibold">神戸市立図書館 業務支援系・座席予約自動化基盤</div>
-                    <h1 class="text-base sm:text-lg font-bold tracking-tight">座席WEB予約支援・AI自動確保ポータル (Libraryes v2.5)</h1>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight">座席WEB予約支援・AI自動確保ポータル (Libraryes v2.6)</h1>
                 </div>
             </div>
 
@@ -208,6 +208,17 @@
         </div>
     </header>
 
+    <!-- Continuous Sniper Monitoring Banner (Displayed when sniper is active) -->
+    <div id="sniper-active-strip" class="hidden bg-amber-500 text-slate-950 font-bold px-4 py-2 text-xs border-b border-amber-600 flex items-center justify-between shadow">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+            <span>【⚡ 永続スナイパー待機稼働中】 空席（キャンセル発生）をミリ秒常時監視中... <span id="sniper-target-info" class="font-mono text-blue-950 underline"></span></span>
+        </div>
+        <button type="button" onclick="stopContinuousSniper()" class="bg-slate-900 text-white px-3 py-1 rounded text-xs hover:bg-slate-800">
+            ⏹ 監視待機を停止
+        </button>
+    </div>
+
     <!-- Sub Header Status Bar -->
     <div class="bg-slate-200 border-b border-slate-300 py-1.5 px-4 text-xs text-slate-600">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -217,8 +228,8 @@
                 <span class="text-blue-900" id="current-breadcrumb">AI最適予約・自動支援コンソール</span>
             </div>
             <div class="flex items-center space-x-3 text-[11px]">
-                <span>定休日規則: <strong class="text-red-700">毎週月曜休館</strong></span>
-                <span>基幹連携: <strong class="text-blue-950">eBoothWeb (tackport)</strong></span>
+                <span>デフォルト確保席数: <strong class="text-blue-950 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-300">2席確保モード</strong></span>
+                <span>定休日: <strong class="text-red-700">毎週月曜休館</strong></span>
                 <span>DB: <strong class="text-emerald-700">SQLite3</strong></span>
             </div>
         </div>
@@ -242,7 +253,7 @@
                 ■ 空席週間マトリクス（黄緑/灰色 台帳）
             </button>
             <button type="button" onclick="switchTab('instant_snipe')" id="tab-btn-instant_snipe" class="jtc-tab-btn">
-                ■ 空席即時確保（スナイプ）
+                ■ 空席即時確保（スナイプ待機）
             </button>
             <button type="button" onclick="switchTab('absolute_sniper')" id="tab-btn-absolute_sniper" class="jtc-tab-btn">
                 ■ 指定日時絶対確保（ピンポイント）
@@ -320,6 +331,17 @@
                                         <option value="64000">3F 学習室</option>
                                         <option value="66000">セミナー室</option>
                                     </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><span class="bg-red-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">必須</span>確保希望席数</th>
+                                <td>
+                                    <select id="ai-seat-count" class="jtc-input w-48 font-bold text-blue-950 bg-blue-50 border-blue-400">
+                                        <option value="2" selected>2席 (推奨/デフォルト)</option>
+                                        <option value="1">1席のみ</option>
+                                        <option value="3">3席 (複数カード連動)</option>
+                                    </select>
+                                    <span class="text-xs text-slate-500 ml-2">※複数アカウント登録時は別カードで2席を同時確保します</span>
                                 </td>
                             </tr>
                             <tr>
@@ -468,18 +490,18 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 3: 空席即時確保（スナイプ） -->
+        <!-- TAB 3: 空席即時確保（スナイプ待機） -->
         <!-- ========================================== -->
         <section id="tab-content-instant_snipe" class="hidden space-y-4">
             <div class="jtc-panel">
                 <div class="section-bar">
-                    <span>▼ 開いている時間を直ぐに取る（即時空き枠スナイパー）</span>
+                    <span>▼ 開いている時間を直ぐに取る（即時空き枠スナイパー / 永続待機）</span>
                     <span class="text-xs font-normal text-blue-100">※キャンセル等で解放された空席を検知し即座に予約を確定します</span>
                 </div>
                 <div class="p-4 space-y-4">
                     <div class="bg-amber-50 border border-amber-300 p-3 rounded text-xs text-amber-900">
-                        <strong>【即時スナイプ機能概要】</strong><br>
-                        指定した日付・座席において、現在空いている枠（黄緑色の枠）を直ちに予約確保します。万一満席（灰色枠）の場合でも、バックグラウンド監視ワーカーが常駐し、他利用者のキャンセルが発生した瞬間にミリ秒単位で奪取します。
+                        <strong>【永続スナイプ待機機能概要】</strong><br>
+                        現在空いている枠（黄緑色）を直ちに2席予約します。満席（灰色）の場合は、「ずっと待機」ボタンを押すとバックグラウンドで<strong>キャンセルが出るまで常時高速スキャンを永続継続</strong>し、空いた瞬間にミリ秒で自動予約を奪取します。
                     </div>
 
                     <table class="jtc-form-table">
@@ -511,12 +533,12 @@
                             </tr>
                             <tr>
                                 <th>対象日付</th>
-                                <td><input type="date" id="snipe-date" onchange="loadLiveVacancies()" class="jtc-input"></td>
+                                <td><input type="date" id="snipe-date" onchange="loadLiveVacancies()" class="jtc-input font-bold"></td>
                             </tr>
                             <tr>
                                 <th>時間帯指定</th>
                                 <td>
-                                    <select id="snipe-time" class="jtc-input w-full sm:w-80">
+                                    <select id="snipe-time" class="jtc-input w-full sm:w-80 font-bold">
                                         <option value="ANY" selected>空いている枠ならいつでも可 (最速確保)</option>
                                         <option value="10:10">10:10 ～ 12:10 (第1枠: 午前)</option>
                                         <option value="12:15">12:15 ～ 14:15 (第2枠: 昼)</option>
@@ -533,8 +555,8 @@
                         <button type="button" onclick="loadLiveVacancies()" class="jtc-btn jtc-btn-default">
                             ⟳ 最新空席状況を照会
                         </button>
-                        <button type="button" onclick="createInstantSnipeTask()" class="jtc-btn jtc-btn-warning py-2 px-6">
-                            ⚡ 空き枠即時奪取タスクを起動
+                        <button type="button" onclick="startContinuousSniper()" class="jtc-btn jtc-btn-warning py-2 px-6 font-bold shadow">
+                            ⚡ 空くのをずっと待機（永続スナイパー起動）
                         </button>
                     </div>
 
@@ -565,7 +587,7 @@
                 <div class="p-4 space-y-4">
                     <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【ピンポイント確保仕様】</strong><br>
-                        1週間前の予約解禁時刻（朝9:00等）や激戦時間帯をピンポイント指定します。事前キャッシュしたCSRFトークンを用い、受付開始と同時に200ms周期のミリ秒連続リクエストを投入して枠を確実に奪取します。
+                        1週間前の予約解禁時刻（朝9:00等）や激戦時間帯をピンポイント指定します。事前キャッシュしたCSRFトークンを用い、受付開始と同時に200ms周期のミリ秒連続リクエストを投入して枠を確実に2席奪取します。
                     </div>
 
                     <table class="jtc-form-table">
@@ -692,7 +714,7 @@
                 <div class="p-4 space-y-4">
                     <div class="bg-blue-50 border border-blue-300 p-3 rounded text-xs text-blue-900">
                         <strong>【認証情報について】</strong><br>
-                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。本システムが公式予約システム（eBoothWeb）に対して自動認証・セッション確立を行い、予約処理を代行します。
+                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。2席以上を同時に確保するために、複数のカード番号を登録しておくことも可能です。
                     </div>
 
                     <form onsubmit="handleAccountSave(event)" class="space-y-4">
@@ -715,7 +737,7 @@
                                 <tr>
                                     <th><span class="bg-slate-600 text-white text-[11px] px-1.5 py-0.5 rounded mr-1">任意</span>アカウント識別名</th>
                                     <td>
-                                        <input type="text" id="acc-name" placeholder="例: 個人用カード" class="jtc-input w-full sm:w-80">
+                                        <input type="text" id="acc-name" placeholder="例: 個人用カード1" class="jtc-input w-full sm:w-80">
                                     </td>
                                 </tr>
                             </tbody>
@@ -804,6 +826,7 @@
         let currentStatusData = null;
         let cachedAiRecommendations = [];
         let cachedWeeklyMatrix = [];
+        let continuousSniperTimer = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             setPresetDate('TODAY');
@@ -867,7 +890,7 @@
             const bc = document.getElementById('current-breadcrumb');
             if (tabId === 'ai_scheduler') bc.textContent = 'AI最適予約・自動支援コンソール';
             if (tabId === 'matrix_view') { bc.textContent = '空席週間マトリクス（黄緑/灰色 台帳）'; loadWeeklyMatrix(); }
-            if (tabId === 'instant_snipe') { bc.textContent = '空席即時確保（スナイプ）'; loadLiveVacancies(); }
+            if (tabId === 'instant_snipe') { bc.textContent = '空席即時確保（スナイプ待機）'; loadLiveVacancies(); }
             if (tabId === 'absolute_sniper') bc.textContent = '指定日時絶対確保（ピンポイント）';
             if (tabId === 'tasks') { bc.textContent = '自動監視タスク台帳'; loadStatus(); }
             if (tabId === 'my_reservations') { bc.textContent = '予約確認・取消管理'; loadMyReservations(); }
@@ -985,13 +1008,13 @@
 
             tbody.innerHTML = tasks.map(t => {
                 let badge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-700">待機中</span>';
-                if (t.status === 'monitoring') badge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">監視中</span>';
+                if (t.status === 'monitoring') badge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">常時監視待機中</span>';
                 if (t.status === 'success') badge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">予約完了</span>';
                 if (t.status === 'failed') badge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">失敗</span>';
 
                 let typeLabel = t.type;
                 if (t.type === 'ai_optimal') typeLabel = 'AI 最適予約';
-                if (t.type === 'instant_snipe') typeLabel = '即時スナイプ';
+                if (t.type === 'instant_snipe') typeLabel = '即時スナイプ(永続待機)';
                 if (t.type === 'absolute_sniper') typeLabel = '絶対確保スナイパー';
 
                 return `
@@ -1000,11 +1023,11 @@
                         <td class="font-bold text-blue-950">${typeLabel}</td>
                         <td class="font-mono">${t.target_date} <strong class="text-blue-900">${t.target_time_slot || ''}</strong></td>
                         <td>${badge}</td>
-                        <td class="font-mono text-center">${t.retry_count} / ${t.max_retries}</td>
+                        <td class="font-mono text-center">${t.retry_count} 回監視</td>
                         <td class="text-xs text-slate-600 truncate max-w-xs" title="${t.result_message || ''}">${t.result_message || '-'}</td>
                         <td class="text-center space-x-1">
                             <button type="button" onclick="runTaskNow(${t.id})" class="jtc-btn jtc-btn-primary text-xs py-0.5 px-2">実行</button>
-                            <button type="button" onclick="deleteTask(${t.id})" class="jtc-btn jtc-btn-danger text-xs py-0.5 px-2">削除</button>
+                            <button type="button" onclick="deleteTask(${t.id})" class="jtc-btn jtc-btn-danger text-xs py-0.5 px-2">停止</button>
                         </td>
                     </tr>
                 `;
@@ -1071,8 +1094,8 @@
                             <strong>【判定結果: 指定条件では現在予約可能な空席がありません】</strong><br>
                             満席または休館日の可能性があります。「空き枠即時奪取タスク」を登録すると、キャンセルが出た瞬間にAIが自動で確保します。
                             <div class="mt-2">
-                                <button type="button" onclick="createInstantSnipeForDate('${date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs">
-                                    ⚡ この条件でキャンセル待ち自動スナイパーを起動
+                                <button type="button" onclick="startContinuousSniperForParams('${date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs">
+                                    ⚡ この条件でキャンセル待ち永続スナイパーを起動
                                 </button>
                             </div>
                         </div>
@@ -1102,7 +1125,7 @@
 
             let filtered = [...cachedAiRecommendations];
 
-            // 1. Availability filter (genuine available only)
+            // 1. Availability filter
             if (availOnly) {
                 filtered = filtered.filter(s => s.available === true && !s.is_closed && !s.is_full);
             }
@@ -1150,7 +1173,7 @@
                     statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-lime-300 text-lime-950 border border-lime-600">◯ 空席あり (${slot.remain_text || '予約可'})</span>`;
                     cardClass = 'slot-available';
                 } else {
-                    statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300">✕ 満席</span>';
+                    statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300">✕ 満席 (0席)</span>';
                     cardClass = 'slot-full';
                 }
 
@@ -1182,12 +1205,12 @@
                                 <span class="text-2xl font-extrabold text-blue-950 font-mono">${slot.ai_score || 0}<span class="text-xs text-slate-500"> /100点</span></span>
                             </div>
                             ${isAvail ? `
-                                <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs font-bold">
-                                    ✔ この枠を即時予約
+                                <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs font-bold">
+                                    ✔ 2席を今すぐ予約
                                 </button>
                             ` : `
-                                <button type="button" onclick="createInstantSnipeForDate('${slot.date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-default text-xs py-1.5 px-3">
-                                    ⚡ キャンセル待ちスナイプ登録
+                                <button type="button" onclick="startContinuousSniperForParams('${slot.date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-xs py-1.5 px-3">
+                                    ⚡ 空くまでずっと待機 (スナイプ)
                                 </button>
                             `}
                         </div>
@@ -1253,9 +1276,9 @@
                             return `
                                 <td class="slot-available text-center p-2">
                                     <span class="block text-xs font-bold">◯ 空席あり</span>
-                                    <span class="block text-[10px] text-lime-900">${s.remain_text || '予約可'}</span>
-                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2.5 mt-1 shadow">
-                                        予約
+                                    <span class="block text-[10px] text-lime-900 font-bold">${s.remain_text || '予約可'}</span>
+                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2.5 mt-1 shadow font-bold">
+                                        2席予約
                                     </button>
                                 </td>
                             `;
@@ -1263,7 +1286,7 @@
                             return `
                                 <td class="slot-full text-center p-2">
                                     <span class="text-xs text-slate-500 font-medium">✕ 満席</span>
-                                    <button type="button" onclick="createInstantSnipeForDate('${s ? s.date : ''}', '${area}', '${corner}')" class="jtc-btn jtc-btn-default text-[10px] py-0.5 px-1.5 mt-1">
+                                    <button type="button" onclick="startContinuousSniperForParams('${s ? s.date : ''}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-[10px] py-0.5 px-1.5 mt-1 font-bold">
                                         待機
                                     </button>
                                 </td>
@@ -1287,17 +1310,25 @@
             }
         }
 
-        async function quickReserve(date, slotId, corner) {
-            showToast('図書館予約システムへ予約リクエストを投入中...', true);
+        async function quickReserve(date, slotId, corner, area = '60000') {
+            const seatCount = document.getElementById('ai-seat-count') ? document.getElementById('ai-seat-count').value : 2;
+            showToast(`図書館予約システムへ ${seatCount}席の予約リクエストを投入中...`, true);
+
             try {
                 const res = await fetch('backend/api.php?action=quick_reserve', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({date, slot_id: slotId, corner_code: corner})
+                    body: JSON.stringify({
+                        date,
+                        slot_id: slotId,
+                        corner_code: corner,
+                        area_code: area,
+                        seat_count: seatCount
+                    })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(`予約確定完了: ${date} (予約番号: ${data.data.reservation_number || '受領済み'})`, true);
+                    showToast(`予約完了: ${data.message}`, true);
                     loadMyReservations();
                 } else {
                     showToast(data.message, false);
@@ -1327,10 +1358,10 @@
                     <div class="slot-available p-2.5 rounded flex items-center justify-between shadow-sm">
                         <div>
                             <strong class="text-xs font-mono block text-emerald-950">${s.label || s.time}</strong>
-                            <span class="text-[10px] text-slate-700 font-mono">${s.status_text || s.remain_text}</span>
+                            <span class="text-[11px] text-emerald-900 font-bold block">${s.remain_text || s.status_text}</span>
                         </div>
-                        <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-xs py-1 px-2.5">
-                            即時取得
+                        <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-xs py-1 px-2.5 font-bold">
+                            2席即時取得
                         </button>
                     </div>
                 `).join('');
@@ -1339,13 +1370,15 @@
             }
         }
 
-        async function createInstantSnipeTask() {
+        /* Continuous Indefinite Sniper Monitoring */
+        async function startContinuousSniper() {
             const area = document.getElementById('snipe-area').value;
             const corner = document.getElementById('snipe-corner').value;
             const date = document.getElementById('snipe-date').value;
             const time = document.getElementById('snipe-time').value;
 
-            showToast('即時スナイパー・監視タスクを登録中...', true);
+            // Register backend task with max_retries = 999999
+            showToast('空くまでずっと待機する永続スナイパーを起動中...', true);
             const res = await fetch('backend/api.php?action=create_task', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1356,24 +1389,58 @@
                     target_date: date,
                     target_time_slot: time,
                     run_now: true,
-                    max_retries: 50
+                    max_retries: 999999
                 })
             });
-            const data = await res.json();
-            if (data.success) {
-                showToast('即時スナイパーが正常に登録・起動されました。', true);
-                switchTab('tasks');
-            } else {
-                showToast(data.message, false);
-            }
+
+            // Activate front-end active strip
+            const strip = document.getElementById('sniper-active-strip');
+            const targetInfo = document.getElementById('sniper-target-info');
+            strip.classList.remove('hidden');
+            targetInfo.textContent = `${date} (館:${area}, 席:${corner}, 枠:${time})`;
+
+            if (continuousSniperTimer) clearInterval(continuousSniperTimer);
+
+            // Frontend continuous loop: Poll every 3 seconds until booked
+            continuousSniperTimer = setInterval(async () => {
+                try {
+                    const checkRes = await fetch(`backend/api.php?action=public_vacancies&area=${area}&date=${date}&corner=${corner}`);
+                    const checkData = await checkRes.json();
+                    const availableSlots = checkData.data?.slots || [];
+
+                    if (availableSlots.length > 0) {
+                        const targetSlot = (time === 'ANY') ? availableSlots[0] : availableSlots.find(s => s.time.includes(time) || s.slot_id === time);
+                        if (targetSlot) {
+                            showToast(`【空き検知！】スナイパーが枠を即時自動確保中...`, true);
+                            await quickReserve(targetSlot.date, targetSlot.slot_id, corner, area);
+                            stopContinuousSniper();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Sniper poll heartbeat...', e);
+                }
+            }, 3000);
+
+            showToast('永続スナイパー待機を開始しました。空きが出次第、自動で予約されます。', true);
+            switchTab('tasks');
         }
 
-        async function createInstantSnipeForDate(date, area, corner) {
+        function startContinuousSniperForParams(date, area, corner) {
             document.getElementById('snipe-area').value = area;
             onAreaSelectChange('snipe-area', 'snipe-corner');
             document.getElementById('snipe-corner').value = corner;
             document.getElementById('snipe-date').value = date;
-            createInstantSnipeTask();
+            switchTab('instant_snipe');
+            startContinuousSniper();
+        }
+
+        function stopContinuousSniper() {
+            if (continuousSniperTimer) {
+                clearInterval(continuousSniperTimer);
+                continuousSniperTimer = null;
+            }
+            document.getElementById('sniper-active-strip').classList.add('hidden');
+            showToast('スナイパーの待機を停止しました。', false);
         }
 
         async function createAbsoluteSniperTask() {
@@ -1394,12 +1461,12 @@
                     target_date: date,
                     target_time_slot: time,
                     execute_at: launch || null,
-                    max_retries: 100
+                    max_retries: 999999
                 })
             });
             const data = await res.json();
             if (data.success) {
-                showToast('ピンポイント絶対取得タスクが登録されました。', true);
+                showToast('ピンポイント絶対取得タスクが登録されました（永続待機設定）。', true);
                 switchTab('tasks');
             } else {
                 showToast(data.message, false);

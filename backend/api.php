@@ -279,39 +279,84 @@ try {
                 DB::log("Reservation cancelled for user {$acc['usercode']} (Slot: {$slotId})", 'success');
                 jsonResponse(['success' => true, 'message' => '予約を正常に取り消しました。']);
             } else {
-                jsonResponse(['success' => false, 'message' => '予約の取り消しに失敗しました。既に取消済みの可能性があります。'], 500);
+                jsonResponse(['success' => false, 'message' => '予約の取り消しに失敗しました。'], 500);
             }
             break;
 
         case 'quick_reserve':
             $input = getJsonInput();
-            $accountId = (int)($input['account_id'] ?? 0);
             $date = $input['date'] ?? date('Y-m-d');
             $slotId = (string)($input['slot_id'] ?? '0');
             $cornerCode = $input['corner_code'] ?? '62000';
+            $areaCode = $input['area_code'] ?? '60000';
+            $seatCount = (int)($input['seat_count'] ?? 2); // Default to 2 seats
 
-            if ($accountId <= 0) {
-                $stmtAcc = $db->query("SELECT * FROM accounts LIMIT 1");
-                $acc = $stmtAcc->fetch();
-            } else {
-                $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE id = :id");
-                $stmtAcc->execute([':id' => $accountId]);
-                $acc = $stmtAcc->fetch();
+            // Fetch all available accounts
+            $stmtAccs = $db->query("SELECT * FROM accounts ORDER BY is_default DESC, id ASC");
+            $accounts = $stmtAccs->fetchAll();
+
+            if (empty($accounts)) {
+                jsonResponse(['success' => false, 'message' => '登録されたアカウントがありません。先にアカウントを設定してください。'], 400);
             }
 
-            if (!$acc) {
-                jsonResponse(['success' => false, 'message' => 'アカウントが見つかりません。'], 400);
+            $results = [];
+            $successCount = 0;
+
+            // Try reserving for requested seat count
+            for ($i = 0; $i < $seatCount; $i++) {
+                // Pick account: if multiple accounts exist, use different accounts for multiple seats
+                $acc = $accounts[$i % count($accounts)];
+                
+                // If same account for second seat, shift to adjacent slot (e.g. next time slot)
+                $targetSlotId = $slotId;
+                if ($i > 0 && count($accounts) === 1) {
+                    $targetSlotId = (string)((int)$slotId + 1);
+                }
+
+                $client = new KobeLibraryClient();
+                try {
+                    $client->login($acc['usercode'], $acc['password']);
+                    $res = $client->reserveSlot($date, $targetSlotId, $cornerCode, $areaCode);
+                    if ($res['success']) {
+                        $successCount++;
+                        $results[] = [
+                            'account' => $acc['usercode'],
+                            'slot_id' => $targetSlotId,
+                            'reservation_number' => $res['reservation_number'],
+                            'success' => true
+                        ];
+                        DB::log("Reserved seat #{$successCount} for {$acc['usercode']}: {$date} Slot {$targetSlotId} (No. " . ($res['reservation_number'] ?? 'OK') . ")", 'success');
+                    } else {
+                        $results[] = [
+                            'account' => $acc['usercode'],
+                            'slot_id' => $targetSlotId,
+                            'success' => false,
+                            'message' => '予約受付されませんでした。'
+                        ];
+                    }
+                } catch (Exception $e) {
+                    $results[] = [
+                        'account' => $acc['usercode'],
+                        'slot_id' => $targetSlotId,
+                        'success' => false,
+                        'message' => $e->getMessage()
+                    ];
+                }
             }
 
-            $client = new KobeLibraryClient();
-            $client->login($acc['usercode'], $acc['password']);
-            $result = $client->reserveSlot($date, $slotId, $cornerCode);
-
-            if ($result['success']) {
-                DB::log("Quick reservation success: {$date} Slot {$slotId} (No. " . ($result['reservation_number'] ?? 'OK') . ")", 'success');
-                jsonResponse(['success' => true, 'message' => '予約が正常に完了しました！', 'data' => $result]);
+            if ($successCount > 0) {
+                jsonResponse([
+                    'success' => true,
+                    'message' => "{$successCount}席の予約を確保しました！（全 {$seatCount}席 要求）",
+                    'reserved_count' => $successCount,
+                    'details' => $results
+                ]);
             } else {
-                jsonResponse(['success' => false, 'message' => '予約に失敗しました。既に満席の可能性があります。'], 500);
+                jsonResponse([
+                    'success' => false,
+                    'message' => '予約に失敗しました: ' . ($results[0]['message'] ?? '満席の可能性があります'),
+                    'details' => $results
+                ], 500);
             }
             break;
 
