@@ -195,6 +195,22 @@
             align-items: center;
             justify-content: space-between;
         }
+
+        /* Vacancy Visual Styles: Yellow-Green for Available / Gray for Occupied */
+        .slot-available {
+            background-color: #d9f99d !important; /* Yellow-Green / Lime */
+            border: 2px solid #65a30d !important;
+            color: #14532d !important;
+            font-weight: 700 !important;
+        }
+        .slot-available:hover {
+            background-color: #bef264 !important;
+        }
+        .slot-occupied {
+            background-color: #e2e8f0 !important; /* Muted Gray */
+            border: 1px solid #cbd5e1 !important;
+            color: #64748b !important;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col text-slate-800">
@@ -233,6 +249,7 @@
             </div>
             <div class="flex items-center space-x-3 text-[11px]">
                 <span>対象基幹: <strong class="text-blue-950">神戸市立図書館 eBoothWeb</strong></span>
+                <span>データベース: <strong class="text-emerald-700">SQLite3 (libraryes.db)</strong></span>
                 <span>セッション暗号化: <strong class="text-emerald-700">HTTPS (TLS1.3)</strong></span>
             </div>
         </div>
@@ -245,7 +262,7 @@
         <div class="jtc-notice-box flex items-start space-x-2">
             <span class="font-bold text-amber-800 shrink-0">【重要なお知らせ】</span>
             <div class="text-slate-700">
-                本システムは、神戸市立図書館（垂水・中央・東灘・北神・名谷・西）の座席予約システムと直結し、<strong>AIアルゴリズムによる最適時間判定、キャンセル発生時の即時自動確保、受付開始時の最速ピンポイント確保</strong>を実行する業務支援ツールです。図書館カードの利用者番号（P+数字）とK-libネットパスワードがそのまま使用可能です。
+                本システムは、神戸市立図書館の公式座席予約基盤と直結しています。<strong>空き枠は黄緑色（◯ 空席あり）</strong>、<strong>満席・受付終了枠は灰色（✕ 満席）</strong>でリアルタイム表示されます。上部の検索フィルターおよびソート機能により、条件に合致する枠を高速に絞り込んで予約可能です。
             </div>
         </div>
 
@@ -259,6 +276,9 @@
         <div class="flex flex-wrap border-b border-slate-300 pt-1 -mb-[1px]">
             <button type="button" onclick="switchTab('ai_scheduler')" id="tab-btn-ai_scheduler" class="jtc-tab-btn active">
                 ■ AI 最適時間 予約支援
+            </button>
+            <button type="button" onclick="switchTab('matrix_view')" id="tab-btn-matrix_view" class="jtc-tab-btn">
+                ■ 空席週間マトリクス（黄緑/灰色 台帳）
             </button>
             <button type="button" onclick="switchTab('instant_snipe')" id="tab-btn-instant_snipe" class="jtc-tab-btn">
                 ■ 空席即時確保（スナイプ）
@@ -362,6 +382,45 @@
                 </div>
             </div>
 
+            <!-- AI Filter & Sort Controls -->
+            <div class="jtc-box p-3 bg-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="font-bold text-slate-700">【絞り込み検索】:</span>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="filter-avail-only" onchange="applyFiltersAndSort()" checked class="rounded text-blue-600">
+                        <span class="font-semibold text-emerald-800">黄緑色（空席あり枠のみ表示）</span>
+                    </label>
+                    <span class="text-slate-300">|</span>
+                    <span>時間帯:</span>
+                    <select id="filter-time-range" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
+                        <option value="ALL">全時間帯</option>
+                        <option value="10:10">午前 (10:10~)</option>
+                        <option value="12:15">昼 (12:15~)</option>
+                        <option value="14:20">午後 (14:20~)</option>
+                        <option value="16:25">夕方 (16:25~)</option>
+                        <option value="18:30">夜間 (18:30~)</option>
+                    </select>
+                    <span class="text-slate-300">|</span>
+                    <span>AIスコア下限:</span>
+                    <select id="filter-min-score" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
+                        <option value="0">全スコア</option>
+                        <option value="70">70点以上 (良好以上)</option>
+                        <option value="80">80点以上 (高快適枠)</option>
+                        <option value="90">90点以上 (最上位推奨)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <span class="font-bold text-slate-700">【ソート順】:</span>
+                    <select id="sort-order" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
+                        <option value="score_desc">AI推奨スコア順（高い順）</option>
+                        <option value="time_asc">日時順（早い順）</option>
+                        <option value="time_desc">日時順（遅い順）</option>
+                        <option value="avail_first">空席枠優先（黄緑が上）</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- AI Output Table / Cards -->
             <div class="jtc-box">
                 <div class="section-header">
@@ -379,7 +438,63 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 2: 空席即時確保（スナイプ） -->
+        <!-- TAB 2: 空席週間マトリクス（黄緑/灰色 台帳） -->
+        <!-- ========================================== -->
+        <section id="tab-content-matrix_view" class="hidden space-y-4">
+            <div class="jtc-box">
+                <div class="section-header">
+                    <span>▼ 7日間 空席週間マトリクス台帳 (黄緑＝空席あり / 灰色＝満席)</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-block w-3 h-3 bg-lime-300 border border-lime-600 rounded-sm"></span>
+                        <span class="text-xs text-white">黄緑: ◯ 空席あり</span>
+                        <span class="inline-block w-3 h-3 bg-slate-300 border border-slate-400 rounded-sm ml-2"></span>
+                        <span class="text-xs text-slate-300">灰色: ✕ 満席</span>
+                    </div>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                        <div class="flex items-center space-x-2 text-xs">
+                            <span class="font-bold text-slate-700">対象座席:</span>
+                            <select id="matrix-corner" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs">
+                                <option value="62000" selected>2F キャレル席</option>
+                                <option value="61000">2F 南カウンター席</option>
+                                <option value="63000">2F 西カウンター席</option>
+                                <option value="64000">3F 学習室</option>
+                                <option value="66000">セミナー室</option>
+                            </select>
+                            <span class="font-bold text-slate-700 ml-2">基準日:</span>
+                            <input type="date" id="matrix-date" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs">
+                        </div>
+                        <button type="button" onclick="loadWeeklyMatrix()" class="jtc-btn jtc-btn-default text-xs">
+                            ⟳ マトリクスを再スキャン
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="jtc-table text-center" id="weekly-matrix-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 140px; text-align: center;">時間帯スロット</th>
+                                    <th id="m-th-0">取得中</th>
+                                    <th id="m-th-1">取得中</th>
+                                    <th id="m-th-2">取得中</th>
+                                    <th id="m-th-3">取得中</th>
+                                    <th id="m-th-4">取得中</th>
+                                    <th id="m-th-5">取得中</th>
+                                    <th id="m-th-6">取得中</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weekly-matrix-tbody">
+                                <tr><td colspan="8" class="py-8 text-center text-slate-500">データを取得中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: 空席即時確保（スナイプ） -->
         <!-- ========================================== -->
         <section id="tab-content-instant_snipe" class="hidden space-y-4">
             <div class="jtc-box">
@@ -390,7 +505,7 @@
                 <div class="p-4 space-y-4">
                     <div class="jtc-info-box">
                         <strong>【即時スナイプ機能概要】</strong><br>
-                        指定した日付・座席において、現在空いている枠を直ちに予約確保します。万一満席の場合でも、バックグラウンド監視ワーカーが常駐し、他利用者のキャンセルが発生した瞬間にミリ秒単位で奪取します。
+                        指定した日付・座席において、現在空いている枠（黄緑色の枠）を直ちに予約確保します。万一満席（灰色枠）の場合でも、バックグラウンド監視ワーカーが常駐し、他利用者のキャンセルが発生した瞬間にミリ秒単位で奪取します。
                     </div>
 
                     <table class="jtc-form-table">
@@ -437,7 +552,9 @@
 
                     <!-- Live Grid -->
                     <div class="mt-4 pt-4 border-t border-slate-200">
-                        <div class="font-bold text-xs text-slate-700 mb-2">【現時点の空席一覧】</div>
+                        <div class="font-bold text-xs text-slate-700 mb-2 flex items-center justify-between">
+                            <span>【現時点の空席一覧】（黄緑＝空き枠 / 灰色＝満席）</span>
+                        </div>
                         <div id="live-vacancies-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                             <div class="p-4 text-center text-slate-500 text-xs col-span-full border border-dashed border-slate-300">
                                 照会ボタンを押下して空席状況を取得してください。
@@ -449,7 +566,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 3: 指定日時絶対確保（ピンポイント） -->
+        <!-- TAB 4: 指定日時絶対確保（ピンポイント） -->
         <!-- ========================================== -->
         <section id="tab-content-absolute_sniper" class="hidden space-y-4">
             <div class="jtc-box">
@@ -501,7 +618,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 4: 自動監視タスク管理台帳 -->
+        <!-- TAB 5: 自動監視タスク管理台帳 -->
         <!-- ========================================== -->
         <section id="tab-content-tasks" class="hidden space-y-4">
             <div class="jtc-box">
@@ -533,7 +650,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 5: 予約確認・取消管理 -->
+        <!-- TAB 6: 予約確認・取消管理 -->
         <!-- ========================================== -->
         <section id="tab-content-my_reservations" class="hidden space-y-4">
             <div class="jtc-box">
@@ -552,7 +669,7 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 6: 図書館アカウント認証設定 -->
+        <!-- TAB 7: 図書館アカウント認証設定 -->
         <!-- ========================================== -->
         <section id="tab-content-account" class="hidden space-y-4">
             <div class="jtc-box">
@@ -640,6 +757,8 @@
     <script>
         let currentPurpose = 'focus';
         let currentStatusData = null;
+        let cachedAiRecommendations = [];
+        let cachedWeeklyMatrix = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             setPresetDate('TODAY');
@@ -689,6 +808,7 @@
 
             const bc = document.getElementById('current-breadcrumb');
             if (tabId === 'ai_scheduler') bc.textContent = 'AI最適予約・自動支援コンソール';
+            if (tabId === 'matrix_view') { bc.textContent = '空席週間マトリクス（黄緑/灰色 台帳）'; loadWeeklyMatrix(); }
             if (tabId === 'instant_snipe') { bc.textContent = '空席即時確保（スナイプ）'; loadLiveVacancies(); }
             if (tabId === 'absolute_sniper') bc.textContent = '指定日時絶対確保（ピンポイント）';
             if (tabId === 'tasks') { bc.textContent = '自動監視タスク台帳'; loadStatus(); }
@@ -700,6 +820,7 @@
             const aiDate = document.getElementById('ai-date');
             const snipeDate = document.getElementById('snipe-date');
             const targetDate = document.getElementById('target-date');
+            const matrixDate = document.getElementById('matrix-date');
 
             let d = new Date();
             if (preset === 'TOMORROW') {
@@ -717,6 +838,7 @@
             if (aiDate) aiDate.value = val;
             if (snipeDate) snipeDate.value = val;
             if (targetDate) targetDate.value = val;
+            if (matrixDate) matrixDate.value = val;
         }
 
         function changePurpose(purpose) {
@@ -883,47 +1005,186 @@
                             </div>
                         </div>
                     `;
+                    cachedAiRecommendations = [];
                     return;
                 }
 
-                resultBadge.textContent = `候補 ${data.top_recommendations.length}件 検出`;
-                resultBadge.className = 'text-xs font-normal bg-emerald-800 text-white px-2 py-0.5 rounded';
+                cachedAiRecommendations = data.top_recommendations;
+                applyFiltersAndSort();
 
-                container.innerHTML = data.top_recommendations.map((slot, idx) => `
-                    <div class="border ${idx === 0 ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 bg-white'} p-4 rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+            } catch (err) {
+                container.innerHTML = `<div class="p-4 text-center text-rose-700 text-xs font-bold">解析中に通信エラーが発生しました。</div>`;
+            }
+        }
+
+        function applyFiltersAndSort() {
+            const container = document.getElementById('ai-result-container');
+            const resultBadge = document.getElementById('ai-result-count');
+            const corner = document.getElementById('ai-corner').value;
+
+            const availOnly = document.getElementById('filter-avail-only').checked;
+            const timeRange = document.getElementById('filter-time-range').value;
+            const minScore = parseInt(document.getElementById('filter-min-score').value, 10);
+            const sortOrder = document.getElementById('sort-order').value;
+
+            let filtered = [...cachedAiRecommendations];
+
+            // 1. Availability filter
+            if (availOnly) {
+                filtered = filtered.filter(s => s.available === true);
+            }
+
+            // 2. Time range filter
+            if (timeRange !== 'ALL') {
+                filtered = filtered.filter(s => s.time && s.time.includes(timeRange));
+            }
+
+            // 3. Min score filter
+            if (minScore > 0) {
+                filtered = filtered.filter(s => (s.ai_score || 0) >= minScore);
+            }
+
+            // 4. Sorting
+            if (sortOrder === 'score_desc') {
+                filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+            } else if (sortOrder === 'time_asc') {
+                filtered.sort((a, b) => ((a.date + (a.time || '')) > (b.date + (b.time || '')) ? 1 : -1));
+            } else if (sortOrder === 'time_desc') {
+                filtered.sort((a, b) => ((a.date + (a.time || '')) < (b.date + (b.time || '')) ? 1 : -1));
+            } else if (sortOrder === 'avail_first') {
+                filtered.sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
+            }
+
+            resultBadge.textContent = `表示: ${filtered.length} / 全 ${cachedAiRecommendations.length}件`;
+            resultBadge.className = 'text-xs font-normal bg-emerald-800 text-white px-2 py-0.5 rounded';
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs bg-slate-50 border border-slate-200">絞り込み条件に一致するスロットはありませんでした。フィルター条件を緩和してください。</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map((slot, idx) => {
+                const isAvail = slot.available !== false;
+                const statusBadge = isAvail 
+                    ? '<span class="px-2 py-0.5 rounded text-xs font-bold bg-lime-200 text-lime-950 border border-lime-500">◯ 空席あり</span>'
+                    : '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300">✕ 満席</span>';
+
+                const cardBorder = isAvail ? 'slot-available' : 'slot-occupied';
+
+                return `
+                    <div class="border p-4 rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 ${cardBorder}">
                         <div>
                             <div class="flex items-center space-x-2">
-                                <span class="px-2 py-0.5 text-xs font-bold ${idx === 0 ? 'bg-blue-700 text-white' : 'bg-slate-600 text-white'} rounded">
+                                <span class="px-2 py-0.5 text-xs font-bold ${idx === 0 && isAvail ? 'bg-blue-800 text-white' : 'bg-slate-700 text-white'} rounded">
                                     第 ${idx + 1} 推奨枠
                                 </span>
-                                <span class="text-base font-bold text-blue-950 font-mono">${slot.time || slot.raw_label}</span>
-                                <span class="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    ${slot.recommendation_tag}
+                                <span class="text-base font-bold font-mono">${slot.time || slot.raw_label}</span>
+                                ${statusBadge}
+                                <span class="text-xs px-2 py-0.5 rounded font-semibold bg-white/80 border border-slate-300">
+                                    ${slot.recommendation_tag || '標準'}
                                 </span>
                             </div>
-                            <div class="text-xs text-slate-500 mt-1 font-mono">対象日: ${slot.date} | 座席枠ID: ${slot.slot_id}</div>
-                            <div class="text-xs text-slate-700 mt-2 bg-white/80 p-2 rounded border border-slate-200">
+                            <div class="text-xs text-slate-700 mt-1 font-mono">対象日: ${slot.date} | 座席枠ID: ${slot.slot_id}</div>
+                            <div class="text-xs text-slate-800 mt-2 bg-white/90 p-2 rounded border border-slate-300">
                                 <strong class="text-blue-900">■ AI 判定理由:</strong>
-                                <ul class="list-disc list-inside mt-0.5 text-slate-600">
-                                    ${slot.reasons.map(r => `<li>${r}</li>`).join('')}
+                                <ul class="list-disc list-inside mt-0.5 text-slate-700">
+                                    ${(slot.reasons || []).map(r => `<li>${r}</li>`).join('')}
                                 </ul>
                             </div>
                         </div>
 
                         <div class="flex md:flex-col items-end justify-between md:justify-center gap-2 shrink-0">
                             <div class="text-right">
-                                <span class="text-[11px] text-slate-500 block">AI 総合快適度</span>
-                                <span class="text-2xl font-extrabold text-blue-900 font-mono">${slot.ai_score}<span class="text-xs text-slate-400"> /100点</span></span>
+                                <span class="text-[11px] text-slate-600 block">AI 総合快適度</span>
+                                <span class="text-2xl font-extrabold text-blue-950 font-mono">${slot.ai_score || 0}<span class="text-xs text-slate-500"> /100点</span></span>
                             </div>
-                            <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs">
-                                ✔ この推奨枠を今すぐ予約
-                            </button>
+                            ${isAvail ? `
+                                <button type="button" onclick="quickReserve('${slot.date}', '${slot.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success py-1.5 px-4 text-xs">
+                                    ✔ この枠を即時予約
+                                </button>
+                            ` : `
+                                <button type="button" onclick="createInstantSnipeForDate('${slot.date}', '${corner}')" class="jtc-btn jtc-btn-default text-xs py-1.5 px-3">
+                                    ⚡ キャンセル待ちスナイプ登録
+                                </button>
+                            `}
                         </div>
                     </div>
-                `).join('');
+                `;
+            }).join('');
+        }
+
+        async function loadWeeklyMatrix() {
+            const corner = document.getElementById('matrix-corner').value;
+            const date = document.getElementById('matrix-date').value;
+            const tbody = document.getElementById('weekly-matrix-tbody');
+
+            tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">週間空席台帳を取得・解析中...</td></tr>`;
+
+            try {
+                const res = await fetch(`backend/api.php?action=public_vacancies&date=${date}&corner=${corner}`);
+                const data = await res.json();
+
+                if (!data.success || !data.data.matrix) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-700">空席マトリクスを取得できませんでした。</td></tr>`;
+                    return;
+                }
+
+                cachedWeeklyMatrix = data.data.matrix;
+
+                // Update headers (Day 0 to Day 6)
+                data.data.matrix.forEach((dayRow, dIdx) => {
+                    const thEl = document.getElementById(`m-th-${dIdx}`);
+                    if (thEl) {
+                        const isSat = dayRow.weekday === '土';
+                        const isSun = dayRow.weekday === '日';
+                        let colorClass = isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800');
+                        thEl.innerHTML = `<span class="block text-[11px] text-slate-500 font-mono">${dayRow.date_formatted.slice(5)}</span><strong class="${colorClass}">${dayRow.weekday}曜</strong>`;
+                    }
+                });
+
+                // Build 5 slot rows
+                const slotDefinitions = [
+                    {id: '0', time: '10:10 - 12:10', label: '第1枠 (午前)'},
+                    {id: '1', time: '12:15 - 14:15', label: '第2枠 (昼)'},
+                    {id: '2', time: '14:20 - 16:20', label: '第3枠 (午後)'},
+                    {id: '3', time: '16:25 - 18:25', label: '第4枠 (夕方)'},
+                    {id: '4', time: '18:30 - 20:30', label: '第5枠 (夜間)'},
+                ];
+
+                tbody.innerHTML = slotDefinitions.map((sDef, sIdx) => {
+                    const cells = data.data.matrix.map(dayRow => {
+                        const s = dayRow.slots[sIdx];
+                        if (s && s.available) {
+                            return `
+                                <td class="slot-available text-center p-2">
+                                    <span class="block text-xs font-bold">◯ 空席あり</span>
+                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-[11px] py-0.5 px-2 mt-1 shadow">
+                                        予約
+                                    </button>
+                                </td>
+                            `;
+                        } else {
+                            return `
+                                <td class="slot-occupied text-center p-2">
+                                    <span class="text-xs text-slate-500 font-medium">✕ 満席</span>
+                                </td>
+                            `;
+                        }
+                    }).join('');
+
+                    return `
+                        <tr>
+                            <th class="bg-slate-100 text-left px-3 py-2">
+                                <span class="font-bold text-blue-950 block">${sDef.label}</span>
+                                <span class="text-[11px] text-slate-500 font-mono">${sDef.time}</span>
+                            </th>
+                            ${cells}
+                        </tr>
+                    `;
+                }).join('');
 
             } catch (err) {
-                container.innerHTML = `<div class="p-4 text-center text-rose-700 text-xs font-bold">解析中に通信エラーが発生しました。</div>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-700">マトリクス取得中に通信エラーが発生しました。</td></tr>`;
             }
         }
 
@@ -958,15 +1219,15 @@
                 const data = await res.json();
 
                 if (!data.success || !data.data.slots || data.data.slots.length === 0) {
-                    container.innerHTML = `<div class="p-4 text-center text-amber-800 bg-amber-50 border border-amber-200 text-xs col-span-full">現在表示可能な空席はありません。自動スナイパーの待機を推奨します。</div>`;
+                    container.innerHTML = `<div class="p-4 text-center text-slate-600 bg-slate-100 border border-slate-300 text-xs col-span-full">現在表示可能な空席はありません。自動スナイパーの待機を推奨します。</div>`;
                     return;
                 }
 
                 container.innerHTML = data.data.slots.map(s => `
-                    <div class="border border-emerald-300 bg-emerald-50/50 p-2.5 rounded flex items-center justify-between">
+                    <div class="slot-available p-2.5 rounded flex items-center justify-between shadow-sm">
                         <div>
-                            <strong class="text-xs text-emerald-950 font-mono block">${s.label}</strong>
-                            <span class="text-[10px] text-slate-500 font-mono">枠: ${s.slot_id}</span>
+                            <strong class="text-xs font-mono block text-emerald-950">${s.label}</strong>
+                            <span class="text-[10px] text-slate-700 font-mono">枠: ${s.slot_id}</span>
                         </div>
                         <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}')" class="jtc-btn jtc-btn-success text-xs py-1 px-2.5">
                             即時取得

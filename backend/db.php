@@ -71,6 +71,17 @@ class DB {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS vacancy_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            area_code TEXT NOT NULL,
+            corner_code TEXT NOT NULL,
+            date TEXT NOT NULL,
+            slot_id TEXT NOT NULL,
+            is_available INTEGER NOT NULL DEFAULT 0,
+            raw_data TEXT,
+            scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL

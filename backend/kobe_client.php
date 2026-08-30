@@ -169,11 +169,20 @@ class KobeLibraryClient {
             'date' => $date,
             'area_code' => $areaCode,
             'area_name' => self::AREAS[$areaCode] ?? '垂水図書館',
-            'slots' => []
+            'slots' => [],
+            'matrix' => []
         ];
 
-        // Parse tables or slot buttons from usagesWeb HTML
-        // Buttons often have: onclick="location.href='/eboothweb_kobe/reservation/login?date=...&id=0'"
+        $standardSlots = [
+            '0' => ['time' => '10:10 - 12:10', 'name' => '第1枠 (午前)'],
+            '1' => ['time' => '12:15 - 14:15', 'name' => '第2枠 (昼)'],
+            '2' => ['time' => '14:20 - 16:20', 'name' => '第3枠 (午後)'],
+            '3' => ['time' => '16:25 - 18:25', 'name' => '第4枠 (夕方)'],
+            '4' => ['time' => '18:30 - 20:30', 'name' => '第5枠 (夜間)'],
+        ];
+
+        // Extract active buttons
+        $activeMap = [];
         preg_match_all('/<button[^>]*onclick="location\.href=\'([^\']+)\'"[^>]*>(.*?)<\/button>/is', $html, $matches, PREG_SET_ORDER);
         foreach ($matches as $m) {
             $href = html_entity_decode($m[1]);
@@ -181,14 +190,55 @@ class KobeLibraryClient {
             if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $href, $pm)) {
                 $pDate = $pm[1] ?: $pm[3];
                 $pId = $pm[2] ?: $pm[4];
-                $results['slots'][] = [
+                $key = "{$pDate}_{$pId}";
+                $time = '';
+                if (preg_match('/(\d{1,2}:\d{2})/', $btnText, $tm)) {
+                    $time = $tm[1];
+                }
+                $activeMap[$key] = [
                     'date' => $pDate,
                     'slot_id' => $pId,
+                    'time' => $time ?: ($standardSlots[$pId]['time'] ?? $btnText),
                     'label' => $btnText,
                     'available' => true,
                     'url' => $href
                 ];
+                $results['slots'][] = $activeMap[$key];
             }
+        }
+
+        // Build 7-day complete matrix (showing both available=lime and full=gray)
+        $targetTs = strtotime($date);
+        for ($day = 0; $day < 7; $day++) {
+            $curTs = strtotime("+{$day} days", $targetTs);
+            $curDateStr = date('Ymd', $curTs);
+            $curDateFmt = date('Y/m/d', $curTs);
+            $weekdayStr = ['日', '月', '火', '水', '木', '金', '土'][date('w', $curTs)];
+
+            $dayRow = [
+                'date' => $curDateStr,
+                'date_formatted' => $curDateFmt,
+                'weekday' => $weekdayStr,
+                'slots' => []
+            ];
+
+            foreach ($standardSlots as $slotId => $slotDef) {
+                $key = "{$curDateStr}_{$slotId}";
+                if (isset($activeMap[$key])) {
+                    $dayRow['slots'][] = $activeMap[$key];
+                } else {
+                    $dayRow['slots'][] = [
+                        'date' => $curDateStr,
+                        'slot_id' => (string)$slotId,
+                        'time' => explode(' - ', $slotDef['time'])[0],
+                        'time_range' => $slotDef['time'],
+                        'label' => $slotDef['name'],
+                        'available' => false,
+                        'url' => null
+                    ];
+                }
+            }
+            $results['matrix'][] = $dayRow;
         }
 
         return $results;
