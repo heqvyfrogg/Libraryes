@@ -465,9 +465,9 @@
                     <table class="jtc-form-table">
                         <tbody>
                             <tr>
-                                <th>対象施設</th>
+                                <th>対象図書館</th>
                                 <td>
-                                    <select id="target-area" onchange="onAreaSelectChange('target-area', 'target-corner')" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
+                                    <select id="target-area" onchange="onAreaSelectChange('target-area', 'target-corner'); updateTargetTimeSlots();" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
                                         <option value="60000" selected>垂水図書館</option>
                                         <option value="30000">中央図書館</option>
                                         <option value="40000">東灘図書館</option>
@@ -496,7 +496,7 @@
                             <tr>
                                 <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>確保目標スロット</th>
                                 <td>
-                                    <input type="text" id="target-time" placeholder="例: 10:10 または 09:30" class="jtc-input w-full sm:w-80 font-bold font-mono">
+                                    <select id="target-time" class="jtc-input w-full sm:w-80 font-bold font-mono"></select>
                                 </td>
                             </tr>
                             <tr>
@@ -681,12 +681,29 @@
                 {id: '52000', name: 'キャレル席'}
             ],
             '10000': [
-                {id: '11000', name: '一般閲覧席'},
-                {id: '12000', name: 'キャレル席'}
+                {id: '11000', name: 'カウンター席'},
+                {id: '12000', name: 'パソコン使用席'},
+                {id: '13000', name: '個人ブース席'}
             ],
             '20000': [
-                {id: '21000', name: '一般閲覧席'},
-                {id: '22000', name: 'キャレル席'}
+                {id: '21000', name: '閲覧席'}
+            ]
+        };
+
+        const LIBRARY_SLOTS = {
+            '30000': [
+                {val: '09:30', label: '09:30 - 11:30 (第1枠: 午前)'},
+                {val: '11:40', label: '11:40 - 13:40 (第2枠: 昼)'},
+                {val: '13:50', label: '13:50 - 15:50 (第3枠: 午後)'},
+                {val: '16:00', label: '16:00 - 18:00 (第4枠: 夕方)'},
+                {val: '18:10', label: '18:10 - 20:00 (第5枠: 夜間)'}
+            ],
+            'DEFAULT': [
+                {val: '10:10', label: '10:10 - 12:10 (第1枠: 午前)'},
+                {val: '12:15', label: '12:15 - 14:15 (第2枠: 昼)'},
+                {val: '14:20', label: '14:20 - 16:20 (第3枠: 午後)'},
+                {val: '16:25', label: '16:25 - 18:25 (第4枠: 夕方)'},
+                {val: '18:30', label: '18:30 - 20:30 (第5枠: 夜間)'}
             ]
         };
 
@@ -701,7 +718,7 @@
             switchTab('matrix_view');
             loadStatus();
             updateClock();
-            setInterval(updateClock, 1000);
+            updateTargetTimeSlots();
         });
 
         function updateClock() {
@@ -729,7 +746,19 @@
             `).join('');
         }
 
-        function showToast(msg, isSuccess = true) {
+        function updateTargetTimeSlots() {
+            const areaEl = document.getElementById('target-area');
+            const timeEl = document.getElementById('target-time');
+            if (!areaEl || !timeEl) return;
+            
+            const areaCode = areaEl.value;
+            const slots = LIBRARY_SLOTS[areaCode] || LIBRARY_SLOTS['DEFAULT'];
+            
+            timeEl.innerHTML = slots.map((s, i) => `
+                <option value="${s.val}" ${i === 0 ? 'selected' : ''}>${s.label}</option>
+            `).join('');
+        }
+
             const banner = document.getElementById('toast-banner');
             const text = document.getElementById('toast-text');
             text.textContent = msg;

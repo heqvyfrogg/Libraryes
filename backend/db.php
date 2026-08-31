@@ -38,7 +38,8 @@ class DB {
             name TEXT,
             is_default INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(session_id, usercode)
         );
 
         CREATE TABLE IF NOT EXISTS tasks (
@@ -102,6 +103,36 @@ class DB {
         try {
             self::$instance->exec("ALTER TABLE logs ADD COLUMN session_id TEXT");
         } catch (Exception $e) {}
+
+        // Migrate away from global usercode UNIQUE constraint
+        try {
+            $stmt = self::$instance->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts'");
+            $schema = $stmt->fetchColumn();
+            if ($schema && stripos($schema, 'UNIQUE(session_id, usercode)') === false) {
+                self::$instance->exec("BEGIN TRANSACTION");
+                self::$instance->exec("ALTER TABLE accounts RENAME TO accounts_old");
+                self::$instance->exec("
+                    CREATE TABLE accounts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT,
+                        usercode TEXT NOT NULL,
+                        password TEXT NOT NULL,
+                        name TEXT,
+                        is_default INTEGER DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(session_id, usercode)
+                    )
+                ");
+                self::$instance->exec("INSERT OR IGNORE INTO accounts SELECT * FROM accounts_old");
+                self::$instance->exec("DROP TABLE accounts_old");
+                self::$instance->exec("COMMIT");
+            }
+        } catch (Exception $e) {
+            if (self::$instance->inTransaction()) {
+                self::$instance->exec("ROLLBACK");
+            }
+        }
     }
 
     public static function log(string $message, string $level = 'info', ?int $taskId = null, array $context = [], ?string $sessionId = null): void {
