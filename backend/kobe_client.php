@@ -202,7 +202,7 @@ class KobeLibraryClient {
 
         $dayColumns = [];
         $colIdx = 0;
-        foreach ($allTh[1] as $thHtml) {
+        foreach ($allTh[1] ?? [] as $thHtml) {
             if (strpos($thHtml, 'select_day') !== false || strpos($thHtml, 'weekday') !== false) {
                 $md = '';
                 $weekday = '';
@@ -224,11 +224,23 @@ class KobeLibraryClient {
             }
         }
 
-        // Fallback for future dates where server returns no date columns
-        if (empty($dayColumns)) {
-            $baseTs = strtotime($date);
+        // 2. Check if server returned columns that do not cover the requested future date
+        $reqTs = strtotime($date);
+        $reqYmd = date('Ymd', $reqTs);
+        $firstColYmd = '';
+        $lastColYmd = '';
+        if (!empty($dayColumns)) {
+            $targetYear = date('Y', $reqTs);
+            $firstColYmd = $targetYear . str_replace('/', '', $dayColumns[0]['md']);
+            $lastColYmd = $targetYear . str_replace('/', '', $dayColumns[count($dayColumns) - 1]['md']);
+        }
+
+        $rawDayCells = [];
+        if (empty($dayColumns) || $reqYmd < $firstColYmd || $reqYmd > $lastColYmd) {
+            // Future date outside published week: dynamically synthesize 8 days starting from requested date
+            $dayColumns = [];
             for ($d = 0; $d < 8; $d++) {
-                $curTs = strtotime("+{$d} days", $baseTs);
+                $curTs = strtotime("+{$d} days", $reqTs);
                 $curWd = ['日', '月', '火', '水', '木', '金', '土'][date('w', $curTs)];
                 $dayColumns[] = [
                     'col_idx' => $d,
@@ -237,22 +249,19 @@ class KobeLibraryClient {
                     'is_closed' => ($curWd === '月')
                 ];
             }
-        }
-
-        // 2. Extract Data cells matching date columns
-        $rawDayCells = [];
-        if (preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $html, $tdMatches)) {
-            foreach ($tdMatches[1] as $td) {
-                if (strpos($td, 'timezones') !== false) {
-                    $rawDayCells[] = $td;
+        } else {
+            // Extract matching Data cells from server response
+            if (preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $html, $tdMatches)) {
+                foreach ($tdMatches[1] as $td) {
+                    if (strpos($td, 'timezones') !== false) {
+                        $rawDayCells[] = $td;
+                    }
                 }
             }
+            if (count($rawDayCells) > count($dayColumns)) {
+                $rawDayCells = array_slice($rawDayCells, 0, count($dayColumns));
+            }
         }
-
-        if (count($rawDayCells) > count($dayColumns)) {
-            $rawDayCells = array_slice($rawDayCells, 0, count($dayColumns));
-        }
-
         $allTimeRanges = [];
         $daySlotMap = [];
 
