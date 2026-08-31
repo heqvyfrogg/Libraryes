@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Management Class (SQLite)
- * Libraryes - Kobe Library AI Auto Reservation System
+ * Libraryes - Kobe Library Auto Reservation System
  */
 
 require_once __DIR__ . '/env.php';

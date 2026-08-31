@@ -6,7 +6,6 @@
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/kobe_client.php';
-require_once __DIR__ . '/ai_engine.php';
 
 class Worker {
     public static function runPendingTasks(): array {
@@ -60,8 +59,6 @@ class Worker {
             }
 
             switch ($task['type']) {
-                case 'ai_optimal':
-                    return self::handleAiOptimalTask($task, $client);
 
                 case 'instant_snipe':
                     return self::handleInstantSnipeTask($task, $client);
@@ -86,54 +83,6 @@ class Worker {
             }
 
             return ['success' => false, 'message' => $errMsg, 'retry_count' => $retryCount];
-        }
-    }
-
-    /**
-     * AI Optimal Reservation Handler
-     */
-    private static function handleAiOptimalTask(array $task, KobeLibraryClient $client): array {
-        $taskId = (int)$task['id'];
-        $cornerCode = $task['corner_code'] ?: '62000';
-        $targetDate = $task['target_date'];
-        $purpose = $task['purpose'] ?: 'focus';
-        $preferredTime = $task['target_time_slot'] ?: null;
-
-        // Normalize target date
-        $lookupDate = self::resolveTargetDate($targetDate);
-
-        // Fetch matrix
-        $matrix = $client->getReservationMatrix($cornerCode, $lookupDate);
-        $availableSlots = $matrix['slots'] ?? [];
-
-        if (empty($availableSlots)) {
-            $msg = "No available slots found for date {$lookupDate} (Corner {$cornerCode}). Monitoring continues.";
-            self::updateTaskStatus($taskId, 'monitoring', $msg, ((int)$task['retry_count'] + 1));
-            DB::log($msg, 'info', $taskId);
-            return ['success' => false, 'monitoring' => true, 'message' => $msg];
-        }
-
-        // Run AI Engine
-        $bestSlot = AIEngine::selectBestSlot($availableSlots, $purpose, $preferredTime);
-        if (!$bestSlot) {
-            throw new Exception("AI Engine could not evaluate candidate slots.");
-        }
-
-        DB::log("AI selected slot: {$bestSlot['date']} {$bestSlot['time']} (Score: {$bestSlot['ai_score']} - {$bestSlot['recommendation_tag']})", 'info', $taskId);
-
-        // Execute reservation
-        $res = $client->reserveSlot($bestSlot['date'], $bestSlot['slot_id'], $cornerCode, $task['area_code'] ?? '60000');
-        if ($res['success']) {
-            $successMsg = "AI Reserved: {$bestSlot['date']} {$bestSlot['time']} (No. " . ($res['reservation_number'] ?? 'OK') . ")";
-            self::updateTaskStatus($taskId, 'success', $successMsg, (int)$task['retry_count'], json_encode([
-                'slot' => $bestSlot,
-                'reservation_number' => $res['reservation_number'],
-                'details' => $res['details']
-            ], JSON_UNESCAPED_UNICODE));
-            DB::log("Task #{$taskId} SUCCEEDED! {$successMsg}", 'success', $taskId);
-            return ['success' => true, 'message' => $successMsg, 'data' => $res];
-        } else {
-            throw new Exception("Reservation result page did not confirm success.");
         }
     }
 

@@ -189,23 +189,31 @@
         }
 
         /* Accurate Visual Availability Classes */
+        .slot-limited {
+            background-color: #fef3c7 !important; /* Amber 100 */
+            border: 2px solid #f59e0b !important; /* Amber 500 */
+            color: #451a03 !important; /* Amber 950 */
+        }
+        .slot-limited:hover {
+            background-color: #fde68a !important; /* Amber 200 */
+        }
         .slot-available {
-            background-color: #ecfccb !important; /* Lime */
-            border: 2px solid #84cc16 !important;
-            color: #365314 !important;
+            background-color: #ecfccb !important; /* Lime 100 */
+            border: 2px solid #84cc16 !important; /* Lime 500 */
+            color: #1a2e05 !important; /* Lime 950 */
         }
         .slot-available:hover {
-            background-color: #d9f99d !important;
+            background-color: #d9f99d !important; /* Lime 200 */
         }
         .slot-full {
-            background-color: #f1f5f9 !important; /* Muted Gray */
-            border: 1px solid #cbd5e1 !important;
-            color: #64748b !important;
+            background-color: #f1f5f9 !important; /* Slate 100 */
+            border: 1px solid #cbd5e1 !important; /* Slate 300 */
+            color: #64748b !important; /* Slate 500 */
         }
         .slot-closed {
-            background-color: #e2e8f0 !important; /* Closed Gray */
+            background-color: #e2e8f0 !important; /* Slate 200 */
             border: 1px solid #cbd5e1 !important;
-            color: #475569 !important;
+            color: #475569 !important; /* Slate 600 */
         }
         
         .no-scrollbar::-webkit-scrollbar {
@@ -228,7 +236,7 @@
                 </div>
                 <div class="min-w-0">
                     <div class="text-[10px] sm:text-[11px] text-blue-200 tracking-wider font-semibold truncate">神戸市立図書館 業務支援系・座席予約自動化基盤</div>
-                    <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight truncate">座席WEB予約支援・AI自動確保ポータル (Libraryes v2.8)</h1>
+                    <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight truncate">座席WEB予約・高速スナイパー支援ポータル (Libraryes v2.8)</h1>
                 </div>
             </div>
 
@@ -265,7 +273,7 @@
             <div class="flex items-center space-x-1.5 font-semibold truncate">
                 <span>ポータル</span>
                 <span>&gt;</span>
-                <span class="text-blue-900 truncate" id="current-breadcrumb">AI最適予約・自動支援コンソール</span>
+                <span class="text-blue-900 truncate" id="current-breadcrumb">座席予約・自動支援コンソール</span>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px]">
                 <span>対象座席: <strong class="text-blue-950 font-bold">全コーナー対応 (全座席選択可能)</strong></span>
@@ -277,7 +285,6 @@
 
     <!-- Main Workspace -->
     <main class="max-w-7xl w-full mx-auto px-2.5 sm:px-4 py-3 sm:py-4 flex-1 space-y-3 sm:space-y-4">
-
         <!-- Notification Banner Box -->
         <div id="toast-banner" class="hidden p-3 rounded text-xs font-bold border flex items-center justify-between shadow-sm">
             <span id="toast-text" class="break-all mr-2"></span>
@@ -286,17 +293,14 @@
 
         <!-- Responsive Horizontal Scroll Tab Navigation -->
         <div class="flex overflow-x-auto no-scrollbar border-b border-slate-300 pt-1 -mb-[1px] space-x-1">
-            <button type="button" onclick="switchTab('ai_scheduler')" id="tab-btn-ai_scheduler" class="jtc-tab-btn active">
-                ■ AI 最適予約
-            </button>
-            <button type="button" onclick="switchTab('matrix_view')" id="tab-btn-matrix_view" class="jtc-tab-btn">
-                ■ 週間マトリクス
+            <button type="button" onclick="switchTab('matrix_view')" id="tab-btn-matrix_view" class="jtc-tab-btn active">
+                ■ 空席週間マトリクス
             </button>
             <button type="button" onclick="switchTab('instant_snipe')" id="tab-btn-instant_snipe" class="jtc-tab-btn">
-                ■ 空席即時確保(スナイプ)
+                ■ 空席即時確保 (スナイプ待機)
             </button>
             <button type="button" onclick="switchTab('absolute_sniper')" id="tab-btn-absolute_sniper" class="jtc-tab-btn">
-                ■ ピンポイント絶対確保
+                ■ 指定日時絶対確保 (ピンポイントスナイパー)
             </button>
             <button type="button" onclick="switchTab('tasks')" id="tab-btn-tasks" class="jtc-tab-btn">
                 ■ 監視タスク台帳 (<span id="task-badge-count">0</span>)
@@ -312,139 +316,10 @@
         <!-- ========================================== -->
         <!-- TAB 1: AI 最適時間 予約支援 -->
         <!-- ========================================== -->
-        <section id="tab-content-ai_scheduler" class="space-y-3 sm:space-y-4">
+        <section id="tab-content-matrix_view" class="space-y-3 sm:space-y-4">
             <div class="jtc-panel">
                 <div class="section-bar">
-                    <span class="truncate">▼ AI 座席予約パラメータ設定 & 最適スロット自動診断</span>
-                    <span class="text-[11px] font-normal text-blue-100 hidden sm:inline">※各館の固有時間割を自動取得して解析</span>
-                </div>
-                <div class="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                    <table class="jtc-form-table">
-                        <tbody>
-                            <tr>
-                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>利用目的</th>
-                                <td>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                                        <label class="flex items-center space-x-1.5 p-2 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-blue-50">
-                                            <input type="radio" name="purpose" value="focus" checked onchange="changePurpose('focus')" class="text-blue-600">
-                                            <span class="font-bold text-xs text-blue-950">① 集中学習</span>
-                                        </label>
-                                        <label class="flex items-center space-x-1.5 p-2 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-blue-50">
-                                            <input type="radio" name="purpose" value="pc_work" onchange="changePurpose('pc_work')" class="text-blue-600">
-                                            <span class="font-bold text-xs text-blue-950">② PC作業</span>
-                                        </label>
-                                        <label class="flex items-center space-x-1.5 p-2 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-blue-50">
-                                            <input type="radio" name="purpose" value="long_study" onchange="changePurpose('long_study')" class="text-blue-600">
-                                            <span class="font-bold text-xs text-blue-950">③ 長時間学習</span>
-                                        </label>
-                                        <label class="flex items-center space-x-1.5 p-2 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-blue-50">
-                                            <input type="radio" name="purpose" value="quick_read" onchange="changePurpose('quick_read')" class="text-blue-600">
-                                            <span class="font-bold text-xs text-blue-950">④ 読書・軽読</span>
-                                        </label>
-                                    </div>
-                                    <div id="purpose-desc" class="text-[11px] sm:text-xs text-slate-500 mt-1.5">
-                                        【集中学習モード】午前および夕方の静寂時間帯を優先選定し、周囲の出入りが少ない快適な枠を自動判定します。
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>対象図書館</th>
-                                <td>
-                                    <select id="ai-area" onchange="onAreaSelectChange('ai-area', 'ai-corner')" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
-                                        <option value="60000" selected>垂水図書館</option>
-                                        <option value="30000">中央図書館</option>
-                                        <option value="40000">東灘図書館</option>
-                                        <option value="50000">北神図書館</option>
-                                        <option value="10000">名谷図書館</option>
-                                        <option value="20000">西図書館</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別 (全コーナー選択可能)</th>
-                                <td>
-                                    <select id="ai-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
-                                        <option value="62000" selected>2F キャレル席</option>
-                                        <option value="61000">2F 南カウンター席</option>
-                                        <option value="63000">2F 西カウンター席</option>
-                                        <option value="64000">3F 学習室</option>
-                                        <option value="66000">セミナー室</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>利用希望日 (任意日付指定可能)</th>
-                                <td>
-                                    <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                        <button type="button" onclick="setPresetDate('TODAY')" class="jtc-btn jtc-btn-default text-xs py-1 px-2.5">本日</button>
-                                        <button type="button" onclick="setPresetDate('TOMORROW')" class="jtc-btn jtc-btn-default text-xs py-1 px-2.5">明日</button>
-                                        <button type="button" onclick="setPresetDate('THIS_WEEKEND')" class="jtc-btn jtc-btn-default text-xs py-1 px-2.5">今週末(土)</button>
-                                        <input type="date" id="ai-date" class="jtc-input font-bold text-xs sm:text-sm">
-                                        <span id="ai-date-note" class="text-xs text-red-600 font-semibold w-full sm:w-auto"></span>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div class="flex justify-end pt-1">
-                        <button type="button" onclick="executeAiAnalysis()" class="jtc-btn jtc-btn-primary w-full sm:w-auto py-2.5 px-6 text-xs sm:text-sm font-bold">
-                            ▶ AI 最適スロット診断 & 空席解析を実行
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Responsive Filter Toolbar -->
-            <div class="jtc-panel p-2.5 sm:p-3 bg-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 text-xs">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-bold text-slate-700 shrink-0">【絞り込み】:</span>
-                    <label class="flex items-center space-x-1 cursor-pointer bg-lime-100 text-lime-900 px-2 py-1 rounded border border-lime-400 font-semibold shrink-0">
-                        <input type="checkbox" id="filter-avail-only" onchange="applyFiltersAndSort()" checked class="rounded text-blue-600">
-                        <span>黄緑色(空席ありのみ)</span>
-                    </label>
-                    <select id="filter-min-score" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
-                        <option value="0">全スコア</option>
-                        <option value="70">70点以上</option>
-                        <option value="80">80点以上 (高快適)</option>
-                        <option value="90">90点以上 (推奨)</option>
-                    </select>
-                </div>
-
-                <div class="flex items-center space-x-1.5 self-end md:self-auto">
-                    <span class="font-bold text-slate-700 shrink-0">並び順:</span>
-                    <select id="sort-order" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs font-semibold">
-                        <option value="score_desc">AIスコア順(高)</option>
-                        <option value="time_asc">日時順(早)</option>
-                        <option value="time_desc">日時順(遅)</option>
-                        <option value="avail_first">空席優先(黄緑)</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- AI Output Table / Cards -->
-            <div class="jtc-panel">
-                <div class="section-bar">
-                    <span>▼ AI 推奨スロット判定結果台帳</span>
-                    <span id="ai-result-count" class="text-[11px] sm:text-xs font-normal bg-blue-900 text-blue-100 px-2 py-0.5 rounded">未診断</span>
-                </div>
-                <div class="p-3 sm:p-4">
-                    <div id="ai-result-container" class="space-y-3">
-                        <div class="p-8 text-center text-slate-500 text-xs">
-                            上記パラメータを設定後、「AI 最適スロット診断 & 空席解析を実行」を押下してください。
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================== -->
-        <!-- TAB 2: 空席週間マトリクス（黄緑/灰色 台帳） -->
-        <!-- ========================================== -->
-        <section id="tab-content-matrix_view" class="hidden space-y-3 sm:space-y-4">
-            <div class="jtc-panel">
-                <div class="section-bar">
-                    <span class="truncate">▼ 空席マトリクス台帳 (基準日指定で任意週を取得可能)</span>
+                    <span class="truncate">▼ 空席マトリクス台帳 (当週状況)</span>
                     <div class="flex items-center space-x-1.5 text-[11px]">
                         <span class="inline-block w-2.5 h-2.5 bg-lime-300 border border-lime-600 rounded-sm"></span>
                         <span class="text-white">◯ 空席</span>
@@ -474,8 +349,6 @@
                                 <option value="66000">セミナー室</option>
                             </select>
 
-                            <span class="font-bold text-slate-700">基準日:</span>
-                            <input type="date" id="matrix-date" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs font-bold">
                         </div>
                         <button type="button" onclick="loadWeeklyMatrix()" class="jtc-btn jtc-btn-default text-xs self-end sm:self-auto">
                             ⟳ 最新スキャン
@@ -825,6 +698,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             setPresetDate('TODAY');
+            switchTab('matrix_view');
             loadStatus();
             updateClock();
             setInterval(updateClock, 1000);
@@ -883,7 +757,6 @@
             if (btn) btn.classList.add('active');
 
             const bc = document.getElementById('current-breadcrumb');
-            if (tabId === 'ai_scheduler') bc.textContent = 'AI最適予約・自動支援コンソール';
             if (tabId === 'matrix_view') { bc.textContent = '空席マトリクス（動的時間割台帳）'; loadWeeklyMatrix(); }
             if (tabId === 'instant_snipe') { bc.textContent = '空席即時確保（スナイプ待機）'; loadLiveVacancies(); }
             if (tabId === 'absolute_sniper') bc.textContent = '指定日時絶対確保（ピンポイント）';
@@ -893,10 +766,8 @@
         }
 
         function setPresetDate(preset) {
-            const aiDate = document.getElementById('ai-date');
             const snipeDate = document.getElementById('snipe-date');
             const targetDate = document.getElementById('target-date');
-            const matrixDate = document.getElementById('matrix-date');
 
             let d = new Date();
             if (preset === 'TOMORROW') {
@@ -911,10 +782,8 @@
             const dd = String(d.getDate()).padStart(2, '0');
             const val = `${yyyy}-${mm}-${dd}`;
 
-            if (aiDate) aiDate.value = val;
             if (snipeDate) snipeDate.value = val;
             if (targetDate) targetDate.value = val;
-            if (matrixDate) matrixDate.value = val;
 
             checkMondayClosed(val);
         }
@@ -1212,7 +1081,7 @@
         async function loadWeeklyMatrix() {
             const area = document.getElementById('matrix-area').value;
             const corner = document.getElementById('matrix-corner').value;
-            const date = document.getElementById('matrix-date').value;
+            const date = new Date().toISOString().split('T')[0];
             const thead = document.getElementById('weekly-matrix-thead');
             const tbody = document.getElementById('weekly-matrix-tbody');
 
@@ -1256,10 +1125,14 @@
                         }
 
                         if (cell.available) {
+                            const isLimitedSeat = (cell.remain_text || '').includes('1席') || cell.seat_count === 1 || (cell.remain_text || '').includes('わずか');
+                            const bgClass = isLimitedSeat ? 'slot-limited' : 'slot-available';
+                            const tc1 = isLimitedSeat ? 'text-amber-950' : 'text-lime-950';
+                            const tc2 = isLimitedSeat ? 'text-amber-900' : 'text-lime-900';
                             return `
-                                <td class="slot-available text-center p-1.5 sm:p-2">
-                                    <span class="block text-[11px] font-bold text-lime-950">◯ 空席</span>
-                                    <span class="block text-[10px] text-lime-900 font-bold">${cell.remain_text || '予約可'}</span>
+                                <td class="${bgClass} text-center p-1.5 sm:p-2">
+                                    <span class="block text-[11px] font-bold ${tc1}">◯ 空席</span>
+                                    <span class="block text-[10px] ${tc2} font-bold">${cell.remain_text || '予約可'}</span>
                                     <button type="button" onclick="quickReserve('${cell.date}', '${cell.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-[10px] py-0.5 px-2.5 mt-1 shadow font-bold">
                                         予約
                                     </button>

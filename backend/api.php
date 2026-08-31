@@ -22,7 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/kobe_client.php';
-require_once __DIR__ . '/ai_engine.php';
 require_once __DIR__ . '/worker.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -137,54 +136,9 @@ try {
             jsonResponse(['success' => true, 'data' => $data]);
             break;
 
-        case 'ai_recommend':
-            $area = $_GET['area'] ?? '60000';
-            $date = $_GET['date'] ?? date('Y-m-d');
-            $corner = $_GET['corner'] ?? '62000';
-            $purpose = $_GET['purpose'] ?? 'focus';
-            $preferredTime = $_GET['preferred_time'] ?? null;
-
-            $client = new KobeLibraryClient();
-            $slots = [];
-
-            // Try authenticated matrix if user has an account in this session
-            $stmtAcc = $db->prepare("SELECT * FROM accounts WHERE session_id = :sid ORDER BY is_default DESC LIMIT 1");
-            $stmtAcc->execute([':sid' => $sessionId]);
-            $acc = $stmtAcc->fetch();
-
-            if ($acc) {
-                try {
-                    $client->login($acc['usercode'], $acc['password']);
-                    $matrix = $client->getReservationMatrix($corner, $date);
-                    $slots = $matrix['slots'] ?? [];
-                } catch (Exception $e) {
-                    // fallback to public
-                }
-            }
-
-            // Fallback to public vacancies
-            if (empty($slots)) {
-                $pub = $client->getPublicVacancies($date, $area, $corner);
-                $slots = $pub['slots'] ?? [];
-            }
-
-            $scoredSlots = AIEngine::evaluateSlots($slots, $purpose, $preferredTime);
-
-            jsonResponse([
-                'success' => true,
-                'date' => $date,
-                'area_code' => $area,
-                'corner_code' => $corner,
-                'purpose' => $purpose,
-                'total_candidates' => count($slots),
-                'top_recommendations' => $scoredSlots,
-                'best_slot' => $scoredSlots[0] ?? null
-            ]);
-            break;
-
         case 'create_task':
             $input = getJsonInput();
-            $type = $input['type'] ?? 'ai_optimal';
+            $type = $input['type'] ?? 'immediate';
             $areaCode = $input['area_code'] ?? '60000';
             $cornerCode = $input['corner_code'] ?? '62000';
             $targetDate = $input['target_date'] ?? 'TODAY';
