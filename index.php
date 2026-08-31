@@ -278,7 +278,6 @@
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px]">
                 <span>対象座席: <strong class="text-blue-950 font-bold">全コーナー対応 (全座席選択可能)</strong></span>
                 <span>未来日スナイプ: <strong class="text-emerald-700 font-bold">無制限指定可能</strong></span>
-                <span>定休日: <strong class="text-red-700">月曜休館</strong></span>
             </div>
         </div>
     </div>
@@ -707,6 +706,7 @@
             ]
         };
 
+
         let currentPurpose = 'focus';
         let currentStatusData = null;
         let cachedAiRecommendations = [];
@@ -714,6 +714,9 @@
         let continuousSniperTimer = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            onAreaSelectChange('matrix-area', 'matrix-corner');
+            onAreaSelectChange('snipe-area', 'snipe-corner');
+            onAreaSelectChange('target-area', 'target-corner');
             setPresetDate('TODAY');
             switchTab('matrix_view');
             loadStatus();
@@ -814,18 +817,6 @@
             if (snipeDate) snipeDate.value = val;
             if (targetDate) targetDate.value = val;
 
-            checkMondayClosed(val);
-        }
-
-        function checkMondayClosed(dateStr) {
-            const noteEl = document.getElementById('ai-date-note');
-            if (!noteEl) return;
-            const d = new Date(dateStr);
-            if (d.getDay() === 1) { // Monday
-                noteEl.textContent = '【注意】選択日は月曜日のため休館日（定休日）です。';
-            } else {
-                noteEl.textContent = '';
-            }
         }
 
         function changePurpose(purpose) {
@@ -1054,7 +1045,7 @@
                 let cardClass = '';
 
                 if (isClosed) {
-                    statusBadge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-300 text-slate-800 border border-slate-400 shrink-0">休館日 (月曜定休)</span>';
+                    statusBadge = '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-300 text-slate-800 border border-slate-400 shrink-0">休館日 / 受付対象外</span>';
                     cardClass = 'slot-closed';
                 } else if (isAvail) {
                     statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-lime-300 text-lime-950 border border-lime-600 shrink-0">◯ 空席あり (${slot.remain_text || '予約可'})</span>`;
@@ -1131,11 +1122,10 @@
                 const cols = data.data.columns || [];
                 let thHtml = `<th style="width: 130px; text-align: center; background-color: #f1f5f9;">時間割スロット</th>`;
                 cols.forEach(c => {
-                    const isMon = c.weekday === '月';
                     const isSat = c.weekday === '土';
                     const isSun = c.weekday === '日';
-                    let colorClass = isMon ? 'text-rose-700 font-extrabold' : (isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800'));
-                    thHtml += `<th style="text-align: center; min-width: 85px;"><span class="block text-[10px] text-slate-500 font-mono">${c.md}</span><strong class="${colorClass}">${c.weekday}曜${isMon ? '(休)' : ''}</strong></th>`;
+                    let colorClass = isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800');
+                    thHtml += `<th style="text-align: center; min-width: 85px;"><span class="block text-[10px] text-slate-500 font-mono">${c.md}</span><strong class="${colorClass}">${c.weekday}曜</strong></th>`;
                 });
                 thead.innerHTML = `<tr>${thHtml}</tr>`;
 

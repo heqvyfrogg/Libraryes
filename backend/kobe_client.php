@@ -217,7 +217,7 @@ class KobeLibraryClient {
                         'col_idx' => $colIdx,
                         'md' => $md,
                         'weekday' => $weekday,
-                        'is_closed' => ($weekday === '月')
+                        'is_closed' => false
                     ];
                     $colIdx++;
                 }
@@ -246,7 +246,7 @@ class KobeLibraryClient {
                     'col_idx' => $d,
                     'md' => date('m/d', $curTs),
                     'weekday' => $curWd,
-                    'is_closed' => ($curWd === '月')
+                    'is_closed' => false
                 ];
             }
         } else {
@@ -267,7 +267,8 @@ class KobeLibraryClient {
 
         // 3. Parse all buttons across each column
         foreach ($rawDayCells as $dIdx => $cellHtml) {
-            $isClosed = ($dayColumns[$dIdx]['is_closed'] || 
+            $hasButtons = strpos($cellHtml, '<button') !== false;
+            $isClosed = (!$hasButtons || 
                          strpos($cellHtml, 'not_reservable_day_button') !== false || 
                          strpos($cellHtml, '受付対象外') !== false);
             $dayColumns[$dIdx]['is_closed'] = $isClosed;
@@ -374,7 +375,7 @@ class KobeLibraryClient {
             $sTime = explode(' - ', $tRange)[0];
             $rowCells = [];
             foreach ($dayColumns as $dIdx => $colInfo) {
-                $isColClosed = $colInfo['is_closed'] || $colInfo['weekday'] === '月';
+                $isColClosed = $colInfo['is_closed'];
                 if (isset($daySlotMap[$dIdx][$sTime])) {
                     $rowCells[] = $daySlotMap[$dIdx][$sTime];
                 } else {
