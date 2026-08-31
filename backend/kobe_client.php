@@ -22,35 +22,35 @@ class KobeLibraryClient {
         '20000' => '西図書館'
     ];
 
-    // Disallowed multi-person/group corner codes
-    public const FORBIDDEN_GROUP_CORNERS = ['63000', '64000', '66000'];
-
-    // Allowed individual-only seat corners
     public const CORNERS = [
         '60000' => [
-            '62000' => '2F キャレル席 (個人席)',
-            '61000' => '2F 南カウンター席 (個人席)'
+            '62000' => '2F キャレル席',
+            '61000' => '2F 南カウンター席',
+            '63000' => '2F 西カウンター席',
+            '64000' => '3F 学習室',
+            '66000' => 'セミナー室'
         ],
         '30000' => [
-            '31000' => '2号館2階 閲覧室1 (個人席)',
-            '32000' => '2号館3階 閲覧室2 (個人席)',
-            '33000' => '2号館3階 閲覧室3 (個人席)'
+            '31000' => '2号館2階 閲覧室1',
+            '32000' => '2号館3階 閲覧室2',
+            '33000' => '2号館3階 閲覧室3',
+            '34000' => '1号館 閲覧席'
         ],
         '40000' => [
-            '41000' => '一般閲覧席 (個人席)',
-            '42000' => 'キャレル席 (個人席)'
+            '41000' => '一般閲覧席',
+            '42000' => 'キャレル席'
         ],
         '50000' => [
-            '51000' => '一般閲覧席 (個人席)',
-            '52000' => 'キャレル席 (個人席)'
+            '51000' => '一般閲覧席',
+            '52000' => 'キャレル席'
         ],
         '10000' => [
-            '11000' => '一般閲覧席 (個人席)',
-            '12000' => 'キャレル席 (個人席)'
+            '11000' => '一般閲覧席',
+            '12000' => 'キャレル席'
         ],
         '20000' => [
-            '21000' => '一般閲覧席 (個人席)',
-            '22000' => 'キャレル席 (個人席)'
+            '21000' => '一般閲覧席',
+            '22000' => 'キャレル席'
         ]
     ];
 
@@ -224,6 +224,21 @@ class KobeLibraryClient {
             }
         }
 
+        // Fallback for future dates where server returns no date columns
+        if (empty($dayColumns)) {
+            $baseTs = strtotime($date);
+            for ($d = 0; $d < 8; $d++) {
+                $curTs = strtotime("+{$d} days", $baseTs);
+                $curWd = ['日', '月', '火', '水', '木', '金', '土'][date('w', $curTs)];
+                $dayColumns[] = [
+                    'col_idx' => $d,
+                    'md' => date('m/d', $curTs),
+                    'weekday' => $curWd,
+                    'is_closed' => ($curWd === '月')
+                ];
+            }
+        }
+
         // 2. Extract Data cells matching date columns
         $rawDayCells = [];
         if (preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $html, $tdMatches)) {
@@ -333,9 +348,13 @@ class KobeLibraryClient {
         ksort($allTimeRanges);
         $sortedTimeSlots = array_values($allTimeRanges);
 
-        // Fallback default slots if closed everywhere
+        // Fallback default slots if not returned by server (e.g. future dates)
         if (empty($sortedTimeSlots)) {
-            $sortedTimeSlots = ['10:10 - 12:10', '12:15 - 14:15', '14:20 - 16:20', '16:25 - 18:25', '18:30 - 19:50'];
+            if ($areaCode === '30000') {
+                $sortedTimeSlots = ['09:30 - 11:30', '11:40 - 13:40', '13:50 - 15:50', '16:00 - 18:00'];
+            } else {
+                $sortedTimeSlots = ['10:10 - 12:10', '12:15 - 14:15', '14:20 - 16:20', '16:25 - 18:25', '18:30 - 19:50'];
+            }
         }
 
         $results['columns'] = $dayColumns;
@@ -350,7 +369,6 @@ class KobeLibraryClient {
                 if (isset($daySlotMap[$dIdx][$sTime])) {
                     $rowCells[] = $daySlotMap[$dIdx][$sTime];
                 } else {
-                    // Slot not present in this column (e.g. Sunday earlier close or Monday closed)
                     $targetYear = date('Y', strtotime($date));
                     $cleanDate = $targetYear . str_replace('/', '', $colInfo['md']);
                     $rowCells[] = [
@@ -375,7 +393,21 @@ class KobeLibraryClient {
                 'cells' => $rowCells
             ];
         }
+
         return $results;
+    }
+
+    /**
+     * Get authenticated reservation matrix for a specific corner and date
+     */
+    public function getReservationMatrix(string $cornerCode = '62000', ?string $date = null): array {
+        $url = self::BASE_URL . '/reservation/select?id=' . urlencode($cornerCode);
+        if ($date) {
+            $url .= '&date=' . str_replace(['-', '/'], '', $date);
+        }
+
+        $res = $this->request('GET', $url);
+        return $this->parseReservationMatrixHtml($res['body'], $cornerCode);
     }
 
     private function parseReservationMatrixHtml(string $html, string $cornerCode): array {
@@ -445,18 +477,17 @@ class KobeLibraryClient {
 
         return $matrix;
     }
+
     /**
-     * Complete reservation workflow for an individual seat slot with session handshake and group-seat block guard
+     * Complete reservation workflow
      */
     public function reserveSlot(string $date, string $slotId, ?string $cornerCode = '62000', ?string $areaCode = '60000'): array {
-        // Block multi-person/group corners
-        if (in_array((string)$cornerCode, self::FORBIDDEN_GROUP_CORNERS, true)) {
-            throw new Exception("指定された座席コーナー(コード: {$cornerCode})は複数人・グループ専用席のため予約対象外です。個人席を選択してください。");
-        }
-
         if (!$this->csrfToken) {
             $this->fetchInitialCsrf();
         }
+
+        $cleanDate = str_replace(['-', '/'], '', $date);
+
         // Step 1: Rule page and Rule confirmation
         $this->request('GET', self::BASE_URL . '/rule');
         $this->request('POST', self::BASE_URL . '/rule/ruleconfirm', [
