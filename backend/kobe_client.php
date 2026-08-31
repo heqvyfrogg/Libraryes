@@ -613,8 +613,12 @@ class KobeLibraryClient {
     }
 
     public function cancelReservation(string $slotId = '0'): bool {
-        $this->request('GET', self::BASE_URL . '/choice/deleteconfirm?id=' . urlencode($slotId));
-        $res = $this->request('GET', self::BASE_URL . '/choice/delete');
+        $this->request('GET', self::BASE_URL . '/choice/index');
+        $confirmUrl = self::BASE_URL . '/choice/deleteconfirm?id=' . urlencode($slotId);
+        $this->request('GET', $confirmUrl);
+        $res = $this->request('GET', self::BASE_URL . '/choice/delete', [
+            'headers' => ['Referer: ' . $confirmUrl]
+        ]);
         return ($res['code'] === 200 && (strpos($res['body'], '取消') !== false || strpos($res['body'], '完了') !== false));
     }
 }
