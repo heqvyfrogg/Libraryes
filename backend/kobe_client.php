@@ -275,6 +275,15 @@ class KobeLibraryClient {
 
                     $slotDate = '';
                     $slotId = '0';
+                    if (preg_match('/date=(\d+)&(?:amp;)?id=(\d+)|date=(\d+)/i', $attr, $pm)) {
+                        $slotDate = !empty($pm[1]) ? $pm[1] : ($pm[3] ?? '');
+                        $slotId = isset($pm[2]) && $pm[2] !== '' ? $pm[2] : '0';
+                    }
+                    if (empty($slotDate) && isset($dayColumns[$dIdx])) {
+                        $targetYear = date('Y', strtotime($date));
+                        $slotDate = $targetYear . str_replace('/', '', $dayColumns[$dIdx]['md']);
+                    }
+
                     $remainCount = null;
                     $remainText = '';
                     if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanInner, $rm)) {
