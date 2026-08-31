@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>神戸市立図書館 座席予約支援・AI自動確保システム</title>
+    <title>神戸市立図書館 座席WEB予約・高速スナイパー支援ポータル</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
