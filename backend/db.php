@@ -129,6 +129,7 @@ class DB {
                 self::$instance->exec("COMMIT");
             }
         } catch (Exception $e) {
+            error_log("Migration failed: " . $e->getMessage());
             if (self::$instance->inTransaction()) {
                 self::$instance->exec("ROLLBACK");
             }
