@@ -190,158 +190,183 @@ class KobeLibraryClient {
         $results = [
             'date' => $date,
             'area_code' => $areaCode,
-            'area_name' => self::AREAS[$areaCode] ?? '垂水図書館',
+            'area_name' => self::AREAS[$areaCode] ?? '図書館',
             'corner_code' => $cornerCode ?: '62000',
             'slots' => [],
+            'columns' => [],
+            'time_slots' => [],
             'matrix' => []
         ];
 
-        // Standard library slot definitions
-        $standardSlots = [
-            '0' => ['time' => '10:10 - 12:10', 'name' => '第1枠 (午前)'],
-            '1' => ['time' => '12:15 - 14:15', 'name' => '第2枠 (昼)'],
-            '2' => ['time' => '14:20 - 16:20', 'name' => '第3枠 (午後)'],
-            '3' => ['time' => '16:25 - 18:25', 'name' => '第4枠 (夕方)'],
-            '4' => ['time' => '18:30 - 19:50', 'name' => '第5枠 (夜間)'],
-        ];
+        // 1. Extract exact date headers from table (all columns)
+        $thMatches = [];
+        if (preg_match('/<tr\b[^>]*>(.*?)<\/tr>/is', $html, $firstRow)) {
+            preg_match_all('/<th\b[^>]*>(.*?)<\/th>/is', $firstRow[1], $thMatches);
+        }
 
-        // Parse day columns from table
-        // Find Table 1
-        $parsedDays = [];
-        if (preg_match('/<table\b[^>]*>(.*?)<\/table>/is', $html, $tm)) {
-            $tableHtml = $tm[1];
-            // Split rows
-            if (preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $tableHtml, $rows)) {
-                $headerRow = $rows[1][0] ?? '';
-                $dataRow = $rows[1][1] ?? '';
-
-                // Extract headers to map columns to dates
-                preg_match_all('/<th\b[^>]*>(.*?)<\/th>/is', $headerRow, $thMatches);
-                $dateHeaders = [];
-                foreach ($thMatches[1] as $thHtml) {
-                    if (preg_match('/(\d{2}\/\d{2})[^\(]*\(\s*<span[^>]*>\s*([^\s<]+)\s*<\/span>\s*\)/u', $thHtml, $dm)) {
-                        $dateHeaders[] = [
-                            'md' => $dm[1],
-                            'weekday' => trim($dm[2])
-                        ];
-                    }
+        $dayColumns = [];
+        $colIdx = 0;
+        foreach ($thMatches[1] ?? [] as $thHtml) {
+            if (strpos($thHtml, 'select_day') !== false || strpos($thHtml, 'weekday') !== false) {
+                $md = '';
+                $weekday = '';
+                if (preg_match('/(\d{2}\/\d{2})/', $thHtml, $mdm)) {
+                    $md = $mdm[1];
                 }
-
-                // Extract data cells
-                preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $dataRow, $tdMatches);
-                // The data cells match the date headers (offset by 1 or 2 for axis)
-                $activeCells = array_slice($tdMatches[1], 1, count($dateHeaders));
-
-                foreach ($dateHeaders as $idx => $dInfo) {
-                    $cellHtml = $activeCells[$idx] ?? '';
-                    $isClosed = (strpos($cellHtml, 'not_reservable_day_button') !== false || 
-                                 strpos($cellHtml, '受付対象外') !== false || 
-                                 $dInfo['weekday'] === '月');
-
-                    $daySlots = [];
-
-                    // Parse buttons in this cell
-                    preg_match_all('/<button\b([^>]*)>(.*?)<\/button>/is', $cellHtml, $btnMatches, PREG_SET_ORDER);
-
-                    foreach ($btnMatches as $bm) {
-                        $attr = $bm[1];
-                        $inner = $bm[2];
-
-                        if (strpos($attr, 'invisible') !== false || strpos($attr, 'not_reservable_day') !== false) {
-                            continue;
-                        }
-
-                        // Extract date & slot id from onclick
-                        if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $attr, $pm)) {
-                            $slotDate = (isset($pm[1]) && $pm[1] !== '') ? $pm[1] : ($pm[3] ?? '');
-                            $slotId = (isset($pm[2]) && $pm[2] !== '') ? $pm[2] : ($pm[4] ?? '0');
-                            $isFull = (strpos($attr, 'full') !== false);
-                            $isLimited = (strpos($attr, 'limited') !== false);
-                            $isReservable = (strpos($attr, 'reservable') !== false);
-                            $isAvailable = (!$isClosed && ($isLimited || $isReservable) && !$isFull);
-
-                            $cleanInner = trim(preg_replace('/\s+/', ' ', strip_tags($inner)));
-                            $remainCount = null;
-                            if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanInner, $rm)) {
-                                $remainCount = (int)$rm[1];
-                            } elseif ($isLimited) {
-                                $remainCount = 1;
-                            } elseif ($isReservable) {
-                                $remainCount = ($cornerCode === '61000' ? 8 : 12);
-                            } elseif ($isFull) {
-                                $remainCount = 0;
-                            }
-
-                            $seatText = ($remainCount !== null) ? "{$remainCount}席" : ($isAvailable ? "1席" : "0席");
-                            // Extract time range
-                            if (preg_match('/(\d{1,2}:\d{2})\s*.*?(\d{1,2}:\d{2})/s', $inner, $tm)) {
-                                $timeStr = "{$tm[1]} - {$tm[2]}";
-                            }
-
-                            $slotObj = [
-                                'date' => $slotDate,
-                                'slot_id' => (string)$slotId,
-                                'time' => explode(' - ', $timeStr)[0],
-                                'time_range' => $timeStr,
-                                'label' => $standardSlots[$slotId]['name'] ?? "第" . ($slotId + 1) . "枠",
-                                'seat_count' => $remainCount,
-                                'remain_text' => "残り {$seatText}",
-                                'available' => $isAvailable,
-                                'is_full' => $isFull,
-                                'is_closed' => $isClosed,
-                                'status_text' => $isClosed ? '休館日' : ($isAvailable ? "◯ 空席あり ({$seatText})" : '✕ 満席 (0席)')
-                            ];
-                            $daySlots[] = $slotObj;
-                            if ($isAvailable) {
-                                $results['slots'][] = $slotObj;
-                            }
-                        }
-                    }
-
-                    // If cell was completely closed or no buttons generated
-                    if (empty($daySlots)) {
-                        $targetYear = date('Y', strtotime($date));
-                        $fullDateStr = $targetYear . str_replace('/', '', $dInfo['md']);
-                        foreach ($standardSlots as $sid => $sdef) {
-                            $daySlots[] = [
-                                'date' => $fullDateStr,
-                                'slot_id' => (string)$sid,
-                                'time' => explode(' - ', $sdef['time'])[0],
-                                'time_range' => $sdef['time'],
-                                'label' => $sdef['name'],
-                                'remain_text' => '',
-                                'available' => false,
-                                'is_full' => false,
-                                'is_closed' => true,
-                                'status_text' => $dInfo['weekday'] === '月' ? '休館日' : '受付対象外'
-                            ];
-                        }
-                    }
-
-                    $results['matrix'][] = [
-                        'md' => $dInfo['md'],
-                        'weekday' => $dInfo['weekday'],
-                        'is_closed' => $isClosed,
-                        'slots' => $daySlots
+                if (preg_match('/<span[^>]*class="weekdaychar"[^>]*>\s*([^\s<]+)\s*<\/span>|\(\s*([^\s\)<]+)\s*\)/u', $thHtml, $wdm)) {
+                    $weekday = trim(!empty($wdm[1]) ? $wdm[1] : ($wdm[2] ?? ''));
+                }
+                if ($md) {
+                    $dayColumns[] = [
+                        'col_idx' => $colIdx,
+                        'md' => $md,
+                        'weekday' => $weekday,
+                        'is_closed' => ($weekday === '月')
                     ];
+                    $colIdx++;
                 }
             }
         }
 
-        return $results;
-    }
-
-    /**
-     * Get authenticated reservation matrix for a specific corner and date
-     */
-    public function getReservationMatrix(string $cornerCode = '62000', ?string $date = null): array {
-        $url = self::BASE_URL . '/reservation/select?id=' . urlencode($cornerCode);
-        if ($date) {
-            $url .= '&date=' . str_replace(['-', '/'], '', $date);
+        // 2. Extract Data cells matching date columns
+        $rawDayCells = [];
+        if (preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $html, $tdMatches)) {
+            foreach ($tdMatches[1] as $td) {
+                if (strpos($td, 'timezones') !== false) {
+                    $rawDayCells[] = $td;
+                }
+            }
         }
 
-        $res = $this->request('GET', $url);
-        return $this->parseReservationMatrixHtml($res['body'], $cornerCode);
+        if (count($rawDayCells) > count($dayColumns)) {
+            $rawDayCells = array_slice($rawDayCells, 0, count($dayColumns));
+        }
+
+        $allTimeRanges = [];
+        $daySlotMap = [];
+
+        // 3. Parse all buttons across each column
+        foreach ($rawDayCells as $dIdx => $cellHtml) {
+            $isClosed = ($dayColumns[$dIdx]['is_closed'] || 
+                         strpos($cellHtml, 'not_reservable_day_button') !== false || 
+                         strpos($cellHtml, '受付対象外') !== false);
+            $dayColumns[$dIdx]['is_closed'] = $isClosed;
+            $daySlotMap[$dIdx] = [];
+
+            preg_match_all('/<button\b([^>]*)>(.*?)<\/button>/is', $cellHtml, $btnMatches, PREG_SET_ORDER);
+            foreach ($btnMatches as $bm) {
+                $attr = $bm[1];
+                $inner = $bm[2];
+                if (strpos($attr, 'invisible') !== false || strpos($attr, 'not_reservable_day') !== false || strpos($attr, 'base_button') !== false) {
+                    continue;
+                }
+
+                $cleanInner = trim(preg_replace('/\s+/', ' ', strip_tags($inner)));
+                $times = [];
+                if (preg_match_all('/\d{1,2}:\d{2}/', $cleanInner, $tm)) {
+                    $times = $tm[0];
+                }
+
+                if (count($times) >= 2) {
+                    $timeRange = "{$times[0]} - {$times[1]}";
+                    $startTime = $times[0];
+                    $allTimeRanges[$startTime] = $timeRange;
+
+                    $isFull = (strpos($attr, 'full') !== false);
+                    $isLimited = (strpos($attr, 'limited') !== false);
+                    $isReservable = (strpos($attr, 'reservable') !== false);
+                    $isAvailable = (!$isClosed && ($isLimited || $isReservable) && !$isFull);
+
+                    $slotDate = '';
+                    $slotId = '0';
+                    if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $attr, $pm)) {
+                        $slotDate = (isset($pm[1]) && $pm[1] !== '') ? $pm[1] : ($pm[3] ?? '');
+                        $slotId = (isset($pm[2]) && $pm[2] !== '') ? $pm[2] : ($pm[4] ?? '0');
+                    }
+
+                    $remainCount = null;
+                    if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanInner, $rm)) {
+                        $remainCount = (int)$rm[1];
+                    } elseif ($isLimited) {
+                        $remainCount = 1;
+                    } elseif ($isReservable) {
+                        $remainCount = ($cornerCode === '61000' ? 8 : 12);
+                    } elseif ($isFull) {
+                        $remainCount = 0;
+                    }
+
+                    $seatText = ($remainCount !== null) ? "{$remainCount}席" : ($isAvailable ? "1席" : "0席");
+
+                    $slotObj = [
+                        'date' => $slotDate,
+                        'slot_id' => (string)$slotId,
+                        'start_time' => $startTime,
+                        'time' => $startTime,
+                        'time_range' => $timeRange,
+                        'label' => $timeRange,
+                        'seat_count' => $remainCount,
+                        'remain_text' => "残り {$seatText}",
+                        'available' => $isAvailable,
+                        'is_full' => $isFull,
+                        'is_closed' => $isClosed,
+                        'status_text' => $isClosed ? '休館日' : ($isAvailable ? "◯ 空席あり ({$seatText})" : '✕ 満席 (0席)')
+                    ];
+
+                    $daySlotMap[$dIdx][$startTime] = $slotObj;
+                    if ($isAvailable) {
+                        $results['slots'][] = $slotObj;
+                    }
+                }
+            }
+        }
+
+        // 4. Sort collected time slots chronologically
+        ksort($allTimeRanges);
+        $sortedTimeSlots = array_values($allTimeRanges);
+
+        // Fallback default slots if closed everywhere
+        if (empty($sortedTimeSlots)) {
+            $sortedTimeSlots = ['10:10 - 12:10', '12:15 - 14:15', '14:20 - 16:20', '16:25 - 18:25', '18:30 - 19:50'];
+        }
+
+        $results['columns'] = $dayColumns;
+        $results['time_slots'] = $sortedTimeSlots;
+
+        // 5. Build 2D grid: matrix[time_slot_index][col_index]
+        foreach ($sortedTimeSlots as $tIdx => $tRange) {
+            $sTime = explode(' - ', $tRange)[0];
+            $rowCells = [];
+            foreach ($dayColumns as $dIdx => $colInfo) {
+                $isColClosed = $colInfo['is_closed'] || $colInfo['weekday'] === '月';
+                if (isset($daySlotMap[$dIdx][$sTime])) {
+                    $rowCells[] = $daySlotMap[$dIdx][$sTime];
+                } else {
+                    // Slot not present in this column (e.g. Sunday earlier close or Monday closed)
+                    $targetYear = date('Y', strtotime($date));
+                    $cleanDate = $targetYear . str_replace('/', '', $colInfo['md']);
+                    $rowCells[] = [
+                        'date' => $cleanDate,
+                        'slot_id' => (string)$tIdx,
+                        'start_time' => $sTime,
+                        'time' => $sTime,
+                        'time_range' => $tRange,
+                        'label' => $tRange,
+                        'seat_count' => 0,
+                        'remain_text' => $isColClosed ? '休館日' : '受付対象外',
+                        'available' => false,
+                        'is_full' => !$isColClosed,
+                        'is_closed' => $isColClosed,
+                        'status_text' => $isColClosed ? '休館日' : '受付対象外'
+                    ];
+                }
+            }
+            $results['matrix'][] = [
+                'time_range' => $tRange,
+                'start_time' => $sTime,
+                'cells' => $rowCells
+            ];
+        }
+        return $results;
     }
 
     private function parseReservationMatrixHtml(string $html, string $cornerCode): array {

@@ -53,7 +53,7 @@
             padding: 8px 10px;
         }
         
-        /* Responsive Form Table: Table on desktop, stacked block on mobile */
+        /* Responsive Form Table */
         .jtc-form-table {
             width: 100%;
             border-collapse: collapse;
@@ -188,7 +188,7 @@
             border-color: #2563eb;
         }
 
-        /* Color Coding */
+        /* Accurate Visual Availability Classes */
         .slot-available {
             background-color: #ecfccb !important; /* Lime */
             border: 2px solid #84cc16 !important;
@@ -208,7 +208,6 @@
             color: #475569 !important;
         }
         
-        /* Scrollbar styling for tabs */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -229,7 +228,7 @@
                 </div>
                 <div class="min-w-0">
                     <div class="text-[10px] sm:text-[11px] text-blue-200 tracking-wider font-semibold truncate">神戸市立図書館 業務支援系・座席予約自動化基盤</div>
-                    <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight truncate">座席WEB予約支援・AI自動確保ポータル (Libraryes)</h1>
+                    <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight truncate">座席WEB予約支援・AI自動確保ポータル (Libraryes v2.7)</h1>
                 </div>
             </div>
 
@@ -269,9 +268,9 @@
                 <span class="text-blue-900 truncate" id="current-breadcrumb">AI最適予約・自動支援コンソール</span>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px]">
-                <span>対象座席: <strong class="text-emerald-700 font-bold">個人専用席限定</strong></span>
+                <span>時間割: <strong class="text-blue-950">各館別完全動的取得</strong></span>
                 <span>定休日: <strong class="text-red-700">月曜休館</strong></span>
-                <span>DB: <strong class="text-emerald-700">SQLite3</strong></span>
+                <span>セッション: <strong class="text-emerald-700">完全個別隔離</strong></span>
             </div>
         </div>
     </div>
@@ -317,7 +316,7 @@
             <div class="jtc-panel">
                 <div class="section-bar">
                     <span class="truncate">▼ AI 座席予約パラメータ設定 & 最適スロット自動診断</span>
-                    <span class="text-[11px] font-normal text-blue-100 hidden sm:inline">※個人席を対象に最適判定</span>
+                    <span class="text-[11px] font-normal text-blue-100 hidden sm:inline">※各館の固有時間割を自動取得して解析</span>
                 </div>
                 <div class="p-3 sm:p-4 space-y-3 sm:space-y-4">
                     <table class="jtc-form-table">
@@ -362,7 +361,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別</th>
+                                <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>座席種別 (個人席のみ)</th>
                                 <td>
                                     <select id="ai-corner" class="jtc-input w-full sm:w-80 font-bold text-blue-950">
                                         <option value="62000" selected>2F キャレル席 (個人席)</option>
@@ -401,14 +400,6 @@
                         <input type="checkbox" id="filter-avail-only" onchange="applyFiltersAndSort()" checked class="rounded text-blue-600">
                         <span>黄緑色(空席ありのみ)</span>
                     </label>
-                    <select id="filter-time-range" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
-                        <option value="ALL">全時間帯</option>
-                        <option value="10:10">午前(10:10~)</option>
-                        <option value="12:15">昼(12:15~)</option>
-                        <option value="14:20">午後(14:20~)</option>
-                        <option value="16:25">夕方(16:25~)</option>
-                        <option value="18:30">夜間(18:30~)</option>
-                    </select>
                     <select id="filter-min-score" onchange="applyFiltersAndSort()" class="jtc-input py-1 text-xs">
                         <option value="0">全スコア</option>
                         <option value="70">70点以上</option>
@@ -450,17 +441,18 @@
         <section id="tab-content-matrix_view" class="hidden space-y-3 sm:space-y-4">
             <div class="jtc-panel">
                 <div class="section-bar">
-                    <span class="truncate">▼ 7日間 空席週間マトリクス (黄緑＝空席 / 灰色＝満席・休館)</span>
+                    <span class="truncate">▼ 空席マトリクス台帳 (各館の固有時間割・全日程を動的取得)</span>
                     <div class="flex items-center space-x-1.5 text-[11px]">
                         <span class="inline-block w-2.5 h-2.5 bg-lime-300 border border-lime-600 rounded-sm"></span>
-                        <span class="text-white">空席</span>
+                        <span class="text-white">◯ 空席</span>
                         <span class="inline-block w-2.5 h-2.5 bg-slate-300 border border-slate-400 rounded-sm ml-1"></span>
-                        <span class="text-slate-300">満席/休館</span>
+                        <span class="text-slate-300">✕ 満席/休館</span>
                     </div>
                 </div>
                 <div class="p-3 sm:p-4 space-y-3">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
                         <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="font-bold text-slate-700">対象図書館:</span>
                             <select id="matrix-area" onchange="onAreaSelectChange('matrix-area', 'matrix-corner'); loadWeeklyMatrix();" class="jtc-input py-1 text-xs font-bold text-blue-950">
                                 <option value="60000" selected>垂水図書館</option>
                                 <option value="30000">中央図書館</option>
@@ -470,32 +462,25 @@
                                 <option value="20000">西図書館</option>
                             </select>
 
+                            <span class="font-bold text-slate-700">座席:</span>
                             <select id="matrix-corner" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs font-bold text-blue-950">
                                 <option value="62000" selected>2F キャレル席 (個人席)</option>
                                 <option value="61000">2F 南カウンター席 (個人席)</option>
                             </select>
 
-                            <input type="date" id="matrix-date" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs">
+                            <span class="font-bold text-slate-700">基準日:</span>
+                            <input type="date" id="matrix-date" onchange="loadWeeklyMatrix()" class="jtc-input py-1 text-xs font-bold">
                         </div>
                         <button type="button" onclick="loadWeeklyMatrix()" class="jtc-btn jtc-btn-default text-xs self-end sm:self-auto">
-                            ⟳ 再スキャン
+                            ⟳ 最新スキャン
                         </button>
                     </div>
 
-                    <!-- Scrollable responsive table wrapper -->
-                    <div class="overflow-x-auto border border-slate-300 rounded">
+                    <!-- Dynamic Scrollable responsive table container -->
+                    <div class="overflow-x-auto border border-slate-300 rounded" id="weekly-matrix-container">
                         <table class="jtc-table text-center min-w-[620px]" id="weekly-matrix-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 120px; text-align: center;">時間枠</th>
-                                    <th id="m-th-0">取得中</th>
-                                    <th id="m-th-1">取得中</th>
-                                    <th id="m-th-2">取得中</th>
-                                    <th id="m-th-3">取得中</th>
-                                    <th id="m-th-4">取得中</th>
-                                    <th id="m-th-5">取得中</th>
-                                    <th id="m-th-6">取得中</th>
-                                </tr>
+                            <thead id="weekly-matrix-thead">
+                                <tr><th>時間割スロット</th><th>取得中...</th></tr>
                             </thead>
                             <tbody id="weekly-matrix-tbody">
                                 <tr><td colspan="8" class="py-8 text-center text-slate-500">データを取得中...</td></tr>
@@ -553,11 +538,6 @@
                                 <td>
                                     <select id="snipe-time" class="jtc-input w-full sm:w-80 font-bold">
                                         <option value="ANY" selected>空いている枠ならいつでも可 (最速確保)</option>
-                                        <option value="10:10">10:10 ～ 12:10 (第1枠: 午前)</option>
-                                        <option value="12:15">12:15 ～ 14:15 (第2枠: 昼)</option>
-                                        <option value="14:20">14:20 ～ 16:20 (第3枠: 午後)</option>
-                                        <option value="16:25">16:25 ～ 18:25 (第4枠: 夕方)</option>
-                                        <option value="18:30">18:30 ～ 20:30 (第5枠: 夜間)</option>
                                     </select>
                                 </td>
                             </tr>
@@ -631,13 +611,7 @@
                             <tr>
                                 <th><span class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded mr-1">必須</span>確保目標スロット</th>
                                 <td>
-                                    <select id="target-time" class="jtc-input w-full sm:w-80 font-bold">
-                                        <option value="10:10">10:10 ～ 12:10 (第1枠: 午前)</option>
-                                        <option value="12:15">12:15 ～ 14:15 (第2枠: 昼)</option>
-                                        <option value="14:20">14:20 ～ 16:20 (第3枠: 午後)</option>
-                                        <option value="16:25">16:25 ～ 18:25 (第4枠: 夕方)</option>
-                                        <option value="18:30">18:30 ～ 20:30 (第5枠: 夜間)</option>
-                                    </select>
+                                    <input type="text" id="target-time" placeholder="例: 10:10 または 09:30" class="jtc-input w-full sm:w-80 font-bold font-mono">
                                 </td>
                             </tr>
                             <tr>
@@ -721,7 +695,8 @@
                 <div class="p-3 sm:p-4 space-y-3 sm:space-y-4">
                     <div class="bg-blue-50 border border-blue-300 p-2.5 sm:p-3 rounded text-xs text-blue-900 leading-relaxed">
                         <strong>【認証情報について】</strong><br>
-                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。
+                        神戸市立図書館の<strong>図書館カード番号（利用者番号: Pから始まる半角英数字）</strong>と、K-libネットで利用している<strong>パスワード</strong>を入力してください。<br>
+                        <span class="text-emerald-800 font-bold">※セッション完全分離により、他の利用者やシークレットウィンドウにはあなたのアカウント情報は一切漏洩しません。</span>
                     </div>
 
                     <form onsubmit="handleAccountSave(event)" class="space-y-3 sm:space-y-4">
@@ -830,7 +805,7 @@
         let currentPurpose = 'focus';
         let currentStatusData = null;
         let cachedAiRecommendations = [];
-        let cachedWeeklyMatrix = [];
+        let cachedWeeklyMatrixData = null;
         let continuousSniperTimer = null;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -894,7 +869,7 @@
 
             const bc = document.getElementById('current-breadcrumb');
             if (tabId === 'ai_scheduler') bc.textContent = 'AI最適予約・自動支援コンソール';
-            if (tabId === 'matrix_view') { bc.textContent = '空席週間マトリクス（黄緑/灰色 台帳）'; loadWeeklyMatrix(); }
+            if (tabId === 'matrix_view') { bc.textContent = '空席マトリクス（動的時間割台帳）'; loadWeeklyMatrix(); }
             if (tabId === 'instant_snipe') { bc.textContent = '空席即時確保（スナイプ待機）'; loadLiveVacancies(); }
             if (tabId === 'absolute_sniper') bc.textContent = '指定日時絶対確保（ピンポイント）';
             if (tabId === 'tasks') { bc.textContent = '自動監視タスク台帳'; loadStatus(); }
@@ -1124,7 +1099,6 @@
             const corner = document.getElementById('ai-corner').value;
 
             const availOnly = document.getElementById('filter-avail-only').checked;
-            const timeRange = document.getElementById('filter-time-range').value;
             const minScore = parseInt(document.getElementById('filter-min-score').value, 10);
             const sortOrder = document.getElementById('sort-order').value;
 
@@ -1135,17 +1109,12 @@
                 filtered = filtered.filter(s => s.available === true && !s.is_closed && !s.is_full);
             }
 
-            // 2. Time range filter
-            if (timeRange !== 'ALL') {
-                filtered = filtered.filter(s => s.time && s.time.includes(timeRange));
-            }
-
-            // 3. Min score filter
+            // 2. Min score filter
             if (minScore > 0) {
                 filtered = filtered.filter(s => (s.ai_score || 0) >= minScore);
             }
 
-            // 4. Sorting
+            // 3. Sorting
             if (sortOrder === 'score_desc') {
                 filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
             } else if (sortOrder === 'time_asc') {
@@ -1195,7 +1164,7 @@
                                     ${slot.recommendation_tag || '標準'}
                                 </span>
                             </div>
-                            <div class="text-[11px] sm:text-xs text-slate-700 mt-1 font-mono">対象日: ${slot.date} | 枠: ${slot.label || slot.slot_id}</div>
+                            <div class="text-[11px] sm:text-xs text-slate-700 mt-1 font-mono">対象日: ${slot.date} | 時間枠: ${slot.label || slot.time}</div>
                             <div class="text-[11px] sm:text-xs text-slate-800 mt-2 bg-white/90 p-2 rounded border border-slate-300">
                                 <strong class="text-blue-900">■ AI 判定理由:</strong>
                                 <ul class="list-disc list-inside mt-0.5 text-slate-700">
@@ -1224,52 +1193,46 @@
             }).join('');
         }
 
+        /* Fully Dynamic Matrix Rendering across all Libraries */
         async function loadWeeklyMatrix() {
             const area = document.getElementById('matrix-area').value;
             const corner = document.getElementById('matrix-corner').value;
             const date = document.getElementById('matrix-date').value;
+            const thead = document.getElementById('weekly-matrix-thead');
             const tbody = document.getElementById('weekly-matrix-tbody');
 
-            tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">週間空席台帳を取得・解析中...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-500">各館固有の時間割と全日程データを取得中...</td></tr>`;
 
             try {
                 const res = await fetch(`backend/api.php?action=public_vacancies&area=${area}&date=${date}&corner=${corner}`);
                 const data = await res.json();
 
-                if (!data.success || !data.data.matrix) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-700">空席マトリクスを取得できませんでした。</td></tr>`;
+                if (!data.success || !data.data.matrix || data.data.matrix.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-rose-700">空席マトリクスを取得できませんでした。</td></tr>`;
                     return;
                 }
 
-                cachedWeeklyMatrix = data.data.matrix;
+                cachedWeeklyMatrixData = data.data;
 
-                // Update headers (Day 0 to Day 6)
-                data.data.matrix.forEach((dayRow, dIdx) => {
-                    const thEl = document.getElementById(`m-th-${dIdx}`);
-                    if (thEl) {
-                        const isMon = dayRow.weekday === '月';
-                        const isSat = dayRow.weekday === '土';
-                        const isSun = dayRow.weekday === '日';
-                        let colorClass = isMon ? 'text-rose-700 font-extrabold' : (isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800'));
-                        thEl.innerHTML = `<span class="block text-[10px] text-slate-500 font-mono">${dayRow.md}</span><strong class="${colorClass}">${dayRow.weekday}曜${isMon ? '(休)' : ''}</strong>`;
-                    }
+                // 1. Build Dynamic Header Columns (all days returned by server)
+                const cols = data.data.columns || [];
+                let thHtml = `<th style="width: 130px; text-align: center; background-color: #f1f5f9;">時間割スロット</th>`;
+                cols.forEach(c => {
+                    const isMon = c.weekday === '月';
+                    const isSat = c.weekday === '土';
+                    const isSun = c.weekday === '日';
+                    let colorClass = isMon ? 'text-rose-700 font-extrabold' : (isSat ? 'text-blue-700' : (isSun ? 'text-red-700' : 'text-slate-800'));
+                    thHtml += `<th style="text-align: center; min-width: 85px;"><span class="block text-[10px] text-slate-500 font-mono">${c.md}</span><strong class="${colorClass}">${c.weekday}曜${isMon ? '(休)' : ''}</strong></th>`;
                 });
+                thead.innerHTML = `<tr>${thHtml}</tr>`;
 
-                // Build 5 slot rows
-                const slotDefinitions = [
-                    {id: '0', time: '10:10 - 12:10', label: '第1枠 (午前)'},
-                    {id: '1', time: '12:15 - 14:15', label: '第2枠 (昼)'},
-                    {id: '2', time: '14:20 - 16:20', label: '第3枠 (午後)'},
-                    {id: '3', time: '16:25 - 18:25', label: '第4枠 (夕方)'},
-                    {id: '4', time: '18:30 - 19:50', label: '第5枠 (夜間)'},
-                ];
+                // 2. Build Dynamic Time Slot Rows
+                tbody.innerHTML = data.data.matrix.map((rowItem, rIdx) => {
+                    const timeRange = rowItem.time_range;
+                    const cells = (rowItem.cells || []).map(cell => {
+                        const isClosed = cell.is_closed || cell.status_text === '休館日';
 
-                tbody.innerHTML = slotDefinitions.map((sDef, sIdx) => {
-                    const cells = data.data.matrix.map(dayRow => {
-                        const isDayClosed = dayRow.is_closed || dayRow.weekday === '月';
-                        const s = dayRow.slots[sIdx];
-
-                        if (isDayClosed) {
+                        if (isClosed) {
                             return `
                                 <td class="slot-closed text-center p-1.5 sm:p-2">
                                     <span class="text-[11px] font-semibold text-slate-600">休館日</span>
@@ -1277,23 +1240,26 @@
                             `;
                         }
 
-                        if (s && s.available) {
+                        if (cell.available) {
                             return `
                                 <td class="slot-available text-center p-1.5 sm:p-2">
                                     <span class="block text-[11px] font-bold text-lime-950">◯ 空席</span>
-                                    <span class="block text-[10px] text-lime-900 font-semibold">${s.remain_text || '予約可'}</span>
-                                    <button type="button" onclick="quickReserve('${s.date}', '${s.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-[10px] py-0.5 px-2 mt-1 shadow font-bold">
+                                    <span class="block text-[10px] text-lime-900 font-bold">${cell.remain_text || '予約可'}</span>
+                                    <button type="button" onclick="quickReserve('${cell.date}', '${cell.slot_id}', '${corner}', '${area}')" class="jtc-btn jtc-btn-success text-[10px] py-0.5 px-2.5 mt-1 shadow font-bold">
                                         予約
                                     </button>
                                 </td>
                             `;
                         } else {
+                            const isNone = cell.status_text === '受付対象外';
                             return `
                                 <td class="slot-full text-center p-1.5 sm:p-2">
-                                    <span class="text-[11px] text-slate-500 font-medium">✕ 満席</span>
-                                    <button type="button" onclick="startContinuousSniperForParams('${s ? s.date : ''}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-[10px] py-0.5 px-1.5 mt-1 font-bold">
-                                        待機
-                                    </button>
+                                    <span class="text-[11px] text-slate-500 font-medium">${isNone ? '対象外' : '✕ 満席'}</span>
+                                    ${!isNone ? `
+                                        <button type="button" onclick="startContinuousSniperForParams('${cell.date}', '${area}', '${corner}')" class="jtc-btn jtc-btn-warning text-[10px] py-0.5 px-1.5 mt-1 font-bold">
+                                            待機
+                                        </button>
+                                    ` : ''}
                                 </td>
                             `;
                         }
@@ -1301,9 +1267,9 @@
 
                     return `
                         <tr>
-                            <th class="bg-slate-100 text-left px-2 sm:px-3 py-2">
-                                <span class="font-bold text-blue-950 block text-xs">${sDef.label}</span>
-                                <span class="text-[10px] text-slate-500 font-mono">${sDef.time}</span>
+                            <th class="bg-slate-100 text-left px-2 sm:px-3 py-2 font-mono text-xs text-blue-950">
+                                <strong>第${rIdx + 1}枠</strong>
+                                <span class="text-[10px] text-slate-600 block">${timeRange}</span>
                             </th>
                             ${cells}
                         </tr>
@@ -1311,7 +1277,7 @@
                 }).join('');
 
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-700 text-xs">マトリクス取得中に通信エラーが発生しました。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-rose-700 text-xs">マトリクス取得中に通信エラーが発生しました。</td></tr>`;
             }
         }
 
@@ -1381,7 +1347,6 @@
             const date = document.getElementById('snipe-date').value;
             const time = document.getElementById('snipe-time').value;
 
-            // Register backend task with max_retries = 999999
             showToast('空くまでずっと待機する永続スナイパーを起動中...', true);
             const res = await fetch('backend/api.php?action=create_task', {
                 method: 'POST',
