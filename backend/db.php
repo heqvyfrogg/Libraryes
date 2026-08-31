@@ -108,6 +108,8 @@ class DB {
         try {
             $stmt = self::$instance->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts'");
             $schema = $stmt->fetchColumn();
+            $stmt->closeCursor();
+            $stmt = null;
             if ($schema && stripos($schema, 'UNIQUE(session_id, usercode)') === false) {
                 self::$instance->exec("BEGIN TRANSACTION");
                 self::$instance->exec("ALTER TABLE accounts RENAME TO accounts_old");
