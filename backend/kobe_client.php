@@ -32,10 +32,9 @@ class KobeLibraryClient {
             '61000' => '2F 南カウンター席 (個人席)'
         ],
         '30000' => [
-            '31000' => '2号館2F 閲覧席1 (個人席)',
-            '32000' => '2号館3F 閲覧席2 (個人席)',
-            '33000' => '1号館2F 閲覧席3 (個人席)',
-            '34000' => '1号館3F 閲覧席4 (個人席)'
+            '31000' => '2号館2階 閲覧室1 (個人席)',
+            '32000' => '2号館3階 閲覧室2 (個人席)',
+            '33000' => '2号館3階 閲覧室3 (個人席)'
         ],
         '40000' => [
             '41000' => '一般閲覧席 (個人席)',
@@ -176,7 +175,7 @@ class KobeLibraryClient {
             'date' => str_replace(['-', '/'], '', $date),
             'area' => $areaCode
         ];
-        if ($cornerCode) {
+        if (!empty($cornerCode)) {
             $query['corner'] = $cornerCode;
         }
 
@@ -198,15 +197,12 @@ class KobeLibraryClient {
             'matrix' => []
         ];
 
-        // 1. Extract exact date headers from table (all columns)
-        $thMatches = [];
-        if (preg_match('/<tr\b[^>]*>(.*?)<\/tr>/is', $html, $firstRow)) {
-            preg_match_all('/<th\b[^>]*>(.*?)<\/th>/is', $firstRow[1], $thMatches);
-        }
+        // 1. Extract exact date headers across table (all columns)
+        preg_match_all('/<th\b[^>]*>(.*?)<\/th>/is', $html, $allTh);
 
         $dayColumns = [];
         $colIdx = 0;
-        foreach ($thMatches[1] ?? [] as $thHtml) {
+        foreach ($allTh[1] as $thHtml) {
             if (strpos($thHtml, 'select_day') !== false || strpos($thHtml, 'weekday') !== false) {
                 $md = '';
                 $weekday = '';
