@@ -275,23 +275,27 @@ class KobeLibraryClient {
 
                     $slotDate = '';
                     $slotId = '0';
-                    if (preg_match('/date=(\d+)&amp;id=(\d+)|date=(\d+)&id=(\d+)/i', $attr, $pm)) {
-                        $slotDate = (isset($pm[1]) && $pm[1] !== '') ? $pm[1] : ($pm[3] ?? '');
-                        $slotId = (isset($pm[2]) && $pm[2] !== '') ? $pm[2] : ($pm[4] ?? '0');
-                    }
-
                     $remainCount = null;
+                    $remainText = '';
                     if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanInner, $rm)) {
                         $remainCount = (int)$rm[1];
+                        $remainText = "残り {$remainCount}席";
                     } elseif ($isLimited) {
-                        $remainCount = 1;
+                        $remainText = "残りわずか";
                     } elseif ($isReservable) {
-                        $remainCount = ($cornerCode === '61000' ? 8 : 12);
+                        $remainText = "空席あり";
                     } elseif ($isFull) {
-                        $remainCount = 0;
+                        $remainText = "満席";
                     }
 
-                    $seatText = ($remainCount !== null) ? "{$remainCount}席" : ($isAvailable ? "1席" : "0席");
+                    $statusText = '✕ 満席';
+                    if ($isClosed) {
+                        $statusText = '休館日';
+                    } elseif ($isAvailable) {
+                        $statusText = !empty($remainText) && strpos($remainText, '席') !== false 
+                            ? "◯ 空席あり ({$remainText})" 
+                            : "◯ 空席 (予約可)";
+                    }
 
                     $slotObj = [
                         'date' => $slotDate,
@@ -301,11 +305,11 @@ class KobeLibraryClient {
                         'time_range' => $timeRange,
                         'label' => $timeRange,
                         'seat_count' => $remainCount,
-                        'remain_text' => "残り {$seatText}",
+                        'remain_text' => $remainText,
                         'available' => $isAvailable,
                         'is_full' => $isFull,
                         'is_closed' => $isClosed,
-                        'status_text' => $isClosed ? '休館日' : ($isAvailable ? "◯ 空席あり ({$seatText})" : '✕ 満席 (0席)')
+                        'status_text' => $statusText
                     ];
 
                     $daySlotMap[$dIdx][$startTime] = $slotObj;
@@ -395,17 +399,21 @@ class KobeLibraryClient {
                     }
                     $cleanText = trim(preg_replace('/\s+/', ' ', $rawText));
                     $remainCount = null;
+                    $remainText = '';
                     if (preg_match('/(?:残り)?\s*(\d+)\s*席/u', $cleanText, $rm)) {
                         $remainCount = (int)$rm[1];
+                        $remainText = "残り {$remainCount}席";
                     } elseif ($isLimited) {
-                        $remainCount = 1;
+                        $remainText = "残りわずか";
                     } elseif ($isReservable) {
-                        $remainCount = ($cornerCode === '61000' ? 8 : 12);
+                        $remainText = "空席あり";
                     } elseif ($isFull) {
-                        $remainCount = 0;
+                        $remainText = "満席";
                     }
 
-                    $seatText = ($remainCount !== null) ? "{$remainCount}席" : ($isAvailable ? "1席" : "0席");
+                    $statusText = $isAvailable 
+                        ? (!empty($remainCount) ? "◯ 空席あり (残り {$remainCount}席)" : "◯ 空席 (予約可)")
+                        : '✕ 満席';
 
                     $matrix['slots'][] = [
                         'date' => $slotDate,
@@ -413,11 +421,12 @@ class KobeLibraryClient {
                         'time' => $time,
                         'raw_label' => $rawText,
                         'seat_count' => $remainCount,
-                        'remain_text' => "残り {$seatText}",
+                        'remain_text' => $remainText,
                         'available' => $isAvailable,
                         'is_full' => $isFull,
-                        'status_text' => $isAvailable ? "◯ 空席あり ({$seatText})" : '✕ 満席 (0席)'
+                        'status_text' => $statusText
                     ];
+
                     if (!in_array($slotDate, $matrix['dates'])) {
                         $matrix['dates'][] = $slotDate;
                     }
