@@ -591,24 +591,26 @@ class KobeLibraryClient {
         $html = $res['body'];
         $reservations = [];
 
-        if (preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $html, $rows)) {
-            foreach ($rows[1] as $row) {
-                if (strpos($row, 'deleteconfirm') !== false || strpos($row, '取消') !== false) {
-                    $item = ['raw' => strip_tags($row)];
-                    if (preg_match('/deleteconfirm\?id=(\d+)/i', $row, $dm)) {
-                        $item['id'] = $dm[1];
-                    }
-                    if (preg_match('/(\d{4}\/\d{2}\/\d{2})/', $row, $dtm)) {
-                        $item['date'] = $dtm[1];
-                    }
-                    if (preg_match('/(\d{1,2}:\d{2})\s*～\s*(\d{1,2}:\d{2})/', $row, $tm)) {
-                        $item['time'] = $tm[1] . ' - ' . $tm[2];
-                    }
-                    $reservations[] = $item;
+        $parts = explode('class="confirm_box"', $html);
+        array_shift($parts);
+        foreach ($parts as $part) {
+            $subPart = explode('class="footer"', $part)[0];
+            if (preg_match('/deleteconfirm\?id=(\d+)/i', $subPart, $dm)) {
+                $item = ['id' => $dm[1]];
+                if (preg_match('/(\d{4}\/\d{2}\/\d{2})/', $subPart, $dtm)) {
+                    $item['date'] = $dtm[1];
                 }
+                if (preg_match('/(\d{1,2}:\d{2}).*?～.*?(\d{1,2}:\d{2})/is', $subPart, $tm)) {
+                    $item['time'] = $tm[1] . ' - ' . $tm[2];
+                }
+                if (preg_match('/<table[^>]*>(.*?)<\/table>/is', $subPart, $tbl)) {
+                    $item['raw'] = trim(preg_replace('/\s+/', ' ', strip_tags($tbl[1])));
+                } else {
+                    $item['raw'] = "予約 ID: " . $item['id'];
+                }
+                $reservations[] = $item;
             }
         }
-
         return $reservations;
     }
 
